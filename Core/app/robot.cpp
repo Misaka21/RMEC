@@ -5,7 +5,29 @@
 #include "dji_driver.hpp"
 #include "cascade_pid.hpp"
 #include "mit_passthrough.hpp"
+#include "power_limiter.hpp"
 
 // 类型别名验证: 确认模板实例化正确
 using DjiCascadeMotor = Motor<DjiDriver, CascadePid>;
 using DjiMitMotor     = Motor<DjiDriver, MitPassthrough>;
+
+// PowerLimiter 编译验证: 确认类型实例化正确
+static_assert(sizeof(PowerLimiter) > 0, "PowerLimiter must be instantiable");
+static_assert(sizeof(Rls2) > 0, "Rls2 must be instantiable");
+
+// 典型用法（Chassis 控制循环内）:
+//   PowerLimiter limiter;
+//   limiter.Init(cfg);
+//   ...
+//   PowerMotorState states[4];
+//   for (int i = 0; i < 4; ++i) {
+//       states[i].pid_output   = motors[i].ComputeOutput(dt);
+//       states[i].speed_rad    = motors[i].Measure().speed_aps * DEGREE_2_RAD;
+//       states[i].set_speed_rad = motors[i].GetRef() * DEGREE_2_RAD;
+//       states[i].max_output   = 16384.0f;
+//   }
+//   limiter.UpdateEnergyLoop(ref_limit, buf_energy, measured_power, dt);
+//   limiter.Limit(states, 4);
+//   for (int i = 0; i < 4; ++i)
+//       motors[i].ApplyOutput(states[i].pid_output);
+//   DjiDriver::FlushAll();
