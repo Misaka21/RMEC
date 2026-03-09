@@ -1,0 +1,42 @@
+
+Breakpoint=D:/Desktop/basic_framework/modules/alarm/buzzer.c:19, State=BP_STATE_ON
+Breakpoint=D:/Desktop/basic_framework/modules/alarm/buzzer.c:25, State=BP_STATE_ON
+Breakpoint=D:/Desktop/basic_framework/modules/imu/ins_task.c:86, State=BP_STATE_DISABLED
+GraphedExpression="INS.Yaw", Color=#a00909
+GraphedExpression="INS.Pitch", Color=#09a01b
+GraphedExpression="INS.Roll", Color=#09a087
+OpenDocument="main.c", FilePath="D:/Desktop/basic_framework/Src/main.c", Line=64
+OpenDocument="bsp_init.c", FilePath="D:/Desktop/basic_framework/bsp/bsp_init.c", Line=0
+OpenDocument="robot.c", FilePath="D:/Desktop/basic_framework/application/robot.c", Line=3
+OpenDocument="port.c", FilePath="D:/Desktop/basic_framework/Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F/port.c", Line=407
+OpenDocument="BMI088driver.c", FilePath="D:/Desktop/basic_framework/modules/imu/BMI088driver.c", Line=330
+OpenDocument="buzzer.c", FilePath="D:/Desktop/basic_framework/modules/alarm/buzzer.c", Line=28
+OpenDocument="startup_stm32f407xx.s", FilePath="D:/Desktop/basic_framework/startup_stm32f407xx.s", Line=46
+OpenDocument="QuaternionEKF.c", FilePath="D:/Desktop/basic_framework/modules/algorithm/QuaternionEKF.c", Line=72
+OpenDocument="ins_task.c", FilePath="D:/Desktop/basic_framework/modules/imu/ins_task.c", Line=54
+OpenDocument="gimbal.c", FilePath="D:/Desktop/basic_framework/application/gimbal/gimbal.c", Line=45
+OpenDocument="tasks.c", FilePath="D:/Desktop/basic_framework/Middlewares/Third_Party/FreeRTOS/Source/tasks.c", Line=3981
+OpenDocument="queue.c", FilePath="D:/Desktop/basic_framework/Middlewares/Third_Party/FreeRTOS/Source/queue.c", Line=837
+OpenToolbar="Debug", Floating=0, x=0, y=0
+OpenWindow="Disassembly", DockArea=RIGHT, x=0, y=0, w=714, h=130, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Break & Tracepoints", DockArea=LEFT, x=0, y=1, w=480, h=213, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VectorCatchIndexMask=254
+OpenWindow="Memory 1", DockArea=BOTTOM, x=2, y=0, w=845, h=319, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, EditorAddress=0x0
+OpenWindow="Watched Data 1", DockArea=LEFT, x=0, y=2, w=480, h=445, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Functions", DockArea=LEFT, x=0, y=0, w=480, h=334, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Terminal", DockArea=BOTTOM, x=0, y=0, w=655, h=319, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+OpenWindow="Data Sampling", DockArea=RIGHT, x=0, y=2, w=714, h=267, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0, VisibleTab=0, UniformSampleSpacing=0
+OpenWindow="Timeline", DockArea=RIGHT, x=0, y=1, w=714, h=595, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=1, DataPaneShown=1, PowerPaneShown=0, CodePaneShown=0, PinCursor="Cursor Movable", TimePerDiv="10 s / Div", TimeStampFormat="Time", DataGraphDrawAsPoints=0, DataGraphLegendShown=1, DataGraphUniformSampleSpacing=0, DataGraphLegendPosition="174;100", PowerGraphDrawAsPoints=0, PowerGraphLegendShown=0, PowerGraphAvgFilterTime=Off, PowerGraphAvgFilterLen=Off, PowerGraphUniformSampleSpacing=0, PowerGraphLegendPosition="513;0", CodeGraphLegendShown=0, CodeGraphLegendPosition="527;0"
+OpenWindow="Console", DockArea=BOTTOM, x=1, y=0, w=342, h=319, FilterBarShown=0, TotalValueBarShown=0, ToolBarShown=0
+TableHeader="Vector Catches", SortCol="None", SortOrder="ASCENDING", VisibleCols=["";"Vector Catch";"Description"], ColWidths=[50;300;500]
+TableHeader="Break & Tracepoints", SortCol="None", SortOrder="ASCENDING", VisibleCols=["";"Type";"Location";"Extras"], ColWidths=[100;100;100;180]
+TableHeader="Functions", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Address";"Size";"#Insts";"Source"], ColWidths=[210;30;28;54;252]
+TableHeader="Data Sampling Table", SortCol="Index", SortOrder="ASCENDING", VisibleCols=["Index";"Time";" INS.Yaw";" INS.Pitch";" INS.Roll"], ColWidths=[100;100;100;100;100]
+TableHeader="Data Sampling Setup", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Type";"Value";"Min";"Max";"Average";"# Changes";"Min. Change";"Max. Change"], ColWidths=[100;100;100;100;100;100;100;107;107]
+TableHeader="Power Sampling", SortCol="Index", SortOrder="ASCENDING", VisibleCols=["Index";"Time";"Ch 0"], ColWidths=[100;100;100]
+TableHeader="Watched Data 1", SortCol="Expression", SortOrder="ASCENDING", VisibleCols=["Expression";"Value";"Location";"Refresh"], ColWidths=[114;128;100;138]
+TableHeader="RegisterSelectionDialog", SortCol="None", SortOrder="ASCENDING", VisibleCols=[], ColWidths=[]
+TableHeader="TargetExceptionDialog", SortCol="Name", SortOrder="ASCENDING", VisibleCols=["Name";"Value";"Address";"Description"], ColWidths=[26;26;26;26]
+WatchedExpression="init_quaternion", Window=Watched Data 1
+WatchedExpression="QEKF_INS", Window=Watched Data 1
+WatchedExpression="init_q4[3]", Window=Watched Data 1
+WatchedExpression="axis_rot", Window=Watched Data 1
