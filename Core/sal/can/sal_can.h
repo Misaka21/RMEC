@@ -94,6 +94,9 @@ namespace sal
         CANInstance(const CANConfig &config);
         ~CANInstance() = default;
 
+        /// 获取接收数据缓冲区指针（供 Module 层 CAN 回调中读取反馈数据）
+        const uint8_t* RxData() const { return rx_data_; }
+
         /**
          * @brief 向CAN发送一帧数据,将数据放入FIFO中排队发送
          *

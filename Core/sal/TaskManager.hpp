@@ -2,6 +2,7 @@
 #include "cmsis_os.h"
 #include "sal_dwt.h"
 #include "log.h"
+#include "xTools.hpp"
 #include <cstdint>
 #include <functional>
 

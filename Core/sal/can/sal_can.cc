@@ -29,10 +29,10 @@ namespace sal
         tx_cbk_ = config.tx_cbk;
         rx_cbk_ = config.rx_cbk;
         fifo_timeout_us_ = config.fifo_timeout_us;
-        // tx_header_.DLC在发送时设置
         tx_header_.StdId = tx_id_;
         tx_header_.IDE = CAN_ID_STD;
         tx_header_.RTR = CAN_RTR_DATA;
+        tx_header_.DLC = MX_CAN_MSG_LEN;
 
         if (can1_filter_idx_ == 0 && can2_filter_idx_ == 14)
         {
