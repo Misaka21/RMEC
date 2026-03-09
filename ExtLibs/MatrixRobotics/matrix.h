@@ -47,52 +47,52 @@ class Matrixf {
     return *this;
   }
   Matrixf<_rows, _cols>& operator+=(const Matrixf<_rows, _cols> mat) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     s = arm_mat_add_f32(&this->arm_mat_, &mat.arm_mat_, &this->arm_mat_);
     return *this;
   }
   Matrixf<_rows, _cols>& operator-=(const Matrixf<_rows, _cols> mat) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     s = arm_mat_sub_f32(&this->arm_mat_, &mat.arm_mat_, &this->arm_mat_);
     return *this;
   }
   Matrixf<_rows, _cols>& operator*=(const float& val) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     s = arm_mat_scale_f32(&this->arm_mat_, val, &this->arm_mat_);
     return *this;
   }
   Matrixf<_rows, _cols>& operator/=(const float& val) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     s = arm_mat_scale_f32(&this->arm_mat_, 1.f / val, &this->arm_mat_);
     return *this;
   }
   Matrixf<_rows, _cols> operator+(const Matrixf<_rows, _cols>& mat) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     Matrixf<_rows, _cols> res;
     s = arm_mat_add_f32(&this->arm_mat_, &mat.arm_mat_, &res.arm_mat_);
     return res;
   }
   Matrixf<_rows, _cols> operator-(const Matrixf<_rows, _cols>& mat) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     Matrixf<_rows, _cols> res;
     s = arm_mat_sub_f32(&this->arm_mat_, &mat.arm_mat_, &res.arm_mat_);
     return res;
   }
   Matrixf<_rows, _cols> operator*(const float& val) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     Matrixf<_rows, _cols> res;
     s = arm_mat_scale_f32(&this->arm_mat_, val, &res.arm_mat_);
     return res;
   }
   friend Matrixf<_rows, _cols> operator*(const float& val,
                                          const Matrixf<_rows, _cols>& mat) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     Matrixf<_rows, _cols> res;
     s = arm_mat_scale_f32(&mat.arm_mat_, val, &res.arm_mat_);
     return res;
   }
   Matrixf<_rows, _cols> operator/(const float& val) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     Matrixf<_rows, _cols> res;
     s = arm_mat_scale_f32(&this->arm_mat_, 1.f / val, &res.arm_mat_);
     return res;
@@ -101,7 +101,7 @@ class Matrixf {
   template <int cols>
   friend Matrixf<_rows, cols> operator*(const Matrixf<_rows, _cols>& mat1,
                                         const Matrixf<_cols, cols>& mat2) {
-    arm_status s;
+    [[maybe_unused]] arm_status s;
     Matrixf<_rows, cols> res;
     s = arm_mat_mult_f32(&mat1.arm_mat_, &mat2.arm_mat_, &res.arm_mat_);
     return res;
@@ -192,7 +192,7 @@ Matrixf<_rows, _cols> diag(Matrixf<_rows, 1> vec) {
 // Inverse
 template <int _dim>
 Matrixf<_dim, _dim> inv(Matrixf<_dim, _dim> mat) {
-  arm_status s;
+  [[maybe_unused]] arm_status s;
   // extended matrix [A|I]
   Matrixf<_dim, 2 * _dim> ext_mat = matrixf::zeros<_dim, 2 * _dim>();
   for (int i = 0; i < _dim; i++) {

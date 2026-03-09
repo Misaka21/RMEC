@@ -129,7 +129,6 @@ Matrixf<4, 1> robotics::rpy2quat(Matrixf<3, 1> rpy) {
 }
 
 Matrixf<4, 1> robotics::quat2angvec(Matrixf<4, 1> q) {
-  float cosq0;
   float theta = 2.0f * acosf(math::limit(q[0][0], -1, 1));
   if (theta == 0 || theta == PI) {
     float angvec[4] = {0, 0, 0, theta};  // θ=0||PI, return[0;θ]
