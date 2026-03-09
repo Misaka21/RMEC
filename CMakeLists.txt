@@ -30,7 +30,6 @@ set(DSP_NAME "libCMSISDSP.a") # 指定DSP库名称
 link_directories(${CMAKE_SOURCE_DIR}/ExtLibs/DSP/Lib)
 
 # 构建选项
-option(USE_EIGEN  OFF) # 是否使用Eigen库
 option(BUILD_DSP ON) # 是否编译DSP库,若要定制须修改DSP/Source/CMakeLists.txt
 
 if(BUILD_DSP)
@@ -60,10 +59,9 @@ add_definitions(
     ) # need -D<macro> to define macro
 
 # add inc
-include(${CMAKE_SOURCE_DIR}/ToolChain/find_header.cmake) 
-if(${USE_EIGEN})
-    include_sub_directories_recursively(${CMAKE_SOURCE_DIR}/ExtLibs/Eigen3)
-endif()
+include(${CMAKE_SOURCE_DIR}/ToolChain/find_header.cmake)
+include_sub_directories_recursively(${CMAKE_SOURCE_DIR}/ExtLibs/MatrixRobotics)
+include_directories(${CMAKE_SOURCE_DIR}/ExtLibs/DSP/Include)
 include_sub_directories_recursively(${CMAKE_SOURCE_DIR}/Core)
 include_sub_directories_recursively(${CMAKE_SOURCE_DIR}/Drivers)
 include_sub_directories_recursively(${CMAKE_SOURCE_DIR}/Middlewares)
@@ -77,6 +75,7 @@ file(GLOB_RECURSE SOURCES
     "Core/*.cpp"
     "Core/*.cc"
     "Core/*.hpp"
+    "ExtLibs/MatrixRobotics/*.cpp"
 )
 
 # 汇编文件路径
