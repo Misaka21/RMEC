@@ -39,6 +39,7 @@ build
 # IDE / Editor
 .vscode/
 .idea/
+.cache/
 *.swp
 *~
 
