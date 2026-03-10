@@ -7,6 +7,13 @@
 #include "mit_passthrough.hpp"
 #include "power_limiter.hpp"
 
+// Topic 模块编译验证
+#include "topic.hpp"
+
+struct TopicTestData { float x; float y; };
+static_assert(std::is_trivially_copyable_v<TopicTestData>);
+static Topic<TopicTestData> topic_test_;
+
 // 类型别名验证: 确认模板实例化正确
 using DjiCascadeMotor = Motor<DjiDriver, CascadePid>;
 using DjiMitMotor     = Motor<DjiDriver, MitPassthrough>;
