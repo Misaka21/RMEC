@@ -4,9 +4,9 @@
 *                         www.segger.com                             *
 **********************************************************************
 
-File          : D:/Desktop/basic_framework/ozone.jdebug
-Created       : 12 Apr 2023 11:19
-Ozone Version : V3.24
+File          : 
+Created       : 10. Mar 2026 20:50
+Ozone Version : V3.40g
 */
 
 /*********************************************************************
@@ -22,18 +22,18 @@ void OnProjectLoad (void) {
   //
   // Dialog-generated settings
   //
-  Project.SetDevice ("STM32F405RG");
-  Project.SetHostIF ("USB", "");
+  Project.AddPathSubstitute ("/Users/david/Documents/Huorui/RM2026/OSS/powerful_framework-master/Toolchain", "$(ProjectDir)");
+  Project.AddPathSubstitute ("/users/david/documents/huorui/rm2026/oss/powerful_framework-master/toolchain", "$(ProjectDir)");
+  Project.SetDevice ("STM32F407IG");
+  Project.SetHostIF ("GDB Server", "localhost:3333");
   Project.SetTargetIF ("SWD");
-  Project.SetTIFSpeed ("15 MHz");
-  Project.AddPathSubstitute ("D:/Desktop/basic_framework", "$(ProjectDir)");
-  Project.AddPathSubstitute ("d:/desktop/basic_framework", "$(ProjectDir)");
+  Project.SetTIFSpeed ("4 MHz");
   Project.AddSvdFile ("$(InstallDir)/Config/CPU/Cortex-M4F.svd");
   Project.AddSvdFile ("$(InstallDir)/Config/Peripherals/STM32F407IG.svd");
   //
   // User settings
   //
-  File.Open ("$(ProjectDir)/build/basic_framework.elf");
+  File.Open ("/Users/david/Documents/Huorui/RM2026/OSS/powerful_framework-master/build/pwf_fw.elf");
 }
 
 /*********************************************************************
@@ -298,6 +298,31 @@ void AfterTargetDownload (void) {
 **********************************************************************
 */
 //void OnError (void) {
+//}
+
+/*********************************************************************
+*
+*       AfterProjectLoad
+*
+* Function description
+*   After Project load routine. Optional.
+*
+**********************************************************************
+*/
+//void AfterProjectLoad (void) {
+//}
+
+/*********************************************************************
+*
+*       OnDebugStartBreakSymbolReached
+*
+* Function description
+*   Called when program execution has reached/passed
+*   the symbol to be breaked at during debug start. Optional.
+*
+**********************************************************************
+*/
+//void OnDebugStartBreakSymReached (void) {
 //}
 
 /*********************************************************************
