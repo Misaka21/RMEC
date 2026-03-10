@@ -1,4 +1,5 @@
 #include "ins_task.hpp"
+#include "robot_def.hpp"
 #include "bmi088.hpp"
 #include "ins.hpp"
 #include "ahrs_math.hpp"
@@ -6,7 +7,11 @@
 #include "TaskManager.hpp"
 #include "sal_dwt.h"
 
-// 文件作用域静态变量
+#include "spi.h"
+#include "tim.h"
+
+#if defined(ONE_BOARD) || defined(GIMBAL_BOARD)
+
 static Bmi088* imu = nullptr;
 static Ins* ins = nullptr;
 static DwtInstance dwt;
@@ -21,26 +26,31 @@ void InsTaskStart() {
         .period_ms  = 1,
 
         .init_func = []() {
-            // 1. 创建 BMI088 (~6s 阻塞校准)
+            // 1. 从 robot_def.hpp 配置 BMI088
             Bmi088Config bmi_cfg{};
-            bmi_cfg.spi_handle = &hspi1;
-            // TODO: 根据板级硬件填写 CS 和 EXTI 引脚
-            // bmi_cfg.acc_cs_port   = GPIOx;
-            // bmi_cfg.acc_cs_pin    = GPIO_PIN_x;
-            // bmi_cfg.gyro_cs_port  = GPIOx;
-            // bmi_cfg.gyro_cs_pin   = GPIO_PIN_x;
-            bmi_cfg.heat_pid_config.kp = 1000;
-            bmi_cfg.heat_pid_config.ki = 20;
-            bmi_cfg.heat_pid_config.kd = 0;
-            bmi_cfg.heat_pid_config.max_out = 2000;
-            bmi_cfg.heat_pid_config.integral_limit = 300;
-            bmi_cfg.heat_pid_config.improve_flags = pid::INTEGRAL_LIMIT;
-            bmi_cfg.heat_tim_handle  = &htim10;
-            bmi_cfg.heat_tim_channel = TIM_CHANNEL_1;
-            bmi_cfg.heat_target_temp = 40.0f;
-            imu = new Bmi088(bmi_cfg);
+            bmi_cfg.spi_handle     = &IMU_SPI_HANDLE;
+            bmi_cfg.acc_cs_port    = IMU_ACC_CS_PORT;
+            bmi_cfg.acc_cs_pin     = IMU_ACC_CS_PIN;
+            bmi_cfg.gyro_cs_port   = IMU_GYRO_CS_PORT;
+            bmi_cfg.gyro_cs_pin    = IMU_GYRO_CS_PIN;
+            bmi_cfg.acc_int_port   = IMU_ACC_INT_PORT;
+            bmi_cfg.acc_int_pin    = IMU_ACC_INT_PIN;
+            bmi_cfg.gyro_int_port  = IMU_GYRO_INT_PORT;
+            bmi_cfg.gyro_int_pin   = IMU_GYRO_INT_PIN;
 
-            // 2. 读 100 样本, 计算初始四元数
+            bmi_cfg.heat_pid_config.kp             = IMU_HEAT_KP;
+            bmi_cfg.heat_pid_config.ki             = IMU_HEAT_KI;
+            bmi_cfg.heat_pid_config.kd             = IMU_HEAT_KD;
+            bmi_cfg.heat_pid_config.max_out        = IMU_HEAT_MAX_OUT;
+            bmi_cfg.heat_pid_config.integral_limit = IMU_HEAT_INTEGRAL_LIMIT;
+            bmi_cfg.heat_pid_config.improve_flags  = pid::INTEGRAL_LIMIT;
+            bmi_cfg.heat_tim_handle  = &IMU_HEAT_TIM;
+            bmi_cfg.heat_tim_channel = IMU_HEAT_CHANNEL;
+            bmi_cfg.heat_target_temp = IMU_HEAT_TARGET_TEMP;
+
+            imu = new Bmi088(bmi_cfg);   // ~6s 阻塞校准
+
+            // 2. 读 100 样本计算初始四元数
             float acc_sum[3] = {};
             Bmi088Data d;
             for (int i = 0; i < 100; ++i) {
@@ -65,7 +75,7 @@ void InsTaskStart() {
         },
 
         .task_func = []() {
-            // 1kHz 主循环: 读→算→发→控
+            // 1 kHz: 读→算→发→控
             float dt = dwt.DwtGetDeltaT();
             Bmi088Data bmi_data;
             imu->Acquire(bmi_data);
@@ -81,3 +91,9 @@ void InsTaskStart() {
         },
     });
 }
+
+#else // CHASSIS_BOARD — 不运行 IMU 任务
+
+void InsTaskStart() {}
+
+#endif

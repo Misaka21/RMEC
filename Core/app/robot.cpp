@@ -10,6 +10,11 @@
 // Topic 模块编译验证
 #include "topic.hpp"
 
+// App 层基础设施编译验证
+#include "robot_def.hpp"
+#include "robot_types.hpp"
+#include "robot_topics.hpp"
+
 // INS 模块编译验证
 #include "ahrs_math.hpp"
 #include "quaternion_ekf.hpp"
