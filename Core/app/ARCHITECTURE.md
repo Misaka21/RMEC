@@ -95,7 +95,7 @@ Core/module/                        ← 模块层 (纯组件, 换车不改)
 Core/app/                           ← 应用层 (编排 + 机器人逻辑)
 │
 │   每个 *_task/ 文件夹 = 一个独立 FreeRTOS 线程
-│   子系统 (cmd/chassis/gimbal/shoot) 不是独立线程, 收在 robot_task/ 内
+│   robot_task 只做指令决策/发布, motor_task 统一执行电机闭环与 CAN 发送
 │
 ├── robot_def.hpp                   # 板型宏 + 硬件引脚 + 机械常量
 ├── robot_topics.hpp                # enum class + 命令/反馈结构体 + Topic 实例
@@ -103,12 +103,16 @@ Core/app/                           ← 应用层 (编排 + 机器人逻辑)
 │
 ├── ins_task/                       # 独立 TaskManager, 1 kHz, Realtime
 │   ├── ins_task.hpp                # [已实现]
-│   └── ins_task.cpp                # 硬件配置 → Bmi088 → Ins → Topic → 云台PID → 温控
+│   └── ins_task.cpp                # 硬件配置 → Bmi088 → Ins → Topic → 温控
 │
 ├── robot_task/                     # 独立 TaskManager, 200 Hz, Normal
 │   ├── robot_task.hpp
-│   ├── robot_task.cpp              # 顺序调用 ↓ 四个子系统 + DjiDriver::FlushAll()
-│   ├── cmd.hpp / cmd.cpp           # 遥控器/键鼠 → 模式决策 → 发布命令
+│   ├── robot_task.cpp              # 顺序调用 cmd + 发布各子系统目标(不直接驱动电机)
+│   └── cmd.hpp / cmd.cpp           # 遥控器/键鼠 → 模式决策 → 发布命令
+│
+├── motor_task/                     # 独立 TaskManager, 1 kHz, Normal
+│   ├── motor_task.hpp
+│   ├── motor_task.cpp              # 统一执行电机 PID + DjiDriver::FlushAll()
 │   ├── chassis.hpp / chassis.cpp   # 麦轮运动学 + 功率限制
 │   ├── gimbal.hpp / gimbal.cpp     # Yaw/Pitch IMU 闭环
 │   └── shoot.hpp / shoot.cpp       # 摩擦轮 + 拨弹盘
@@ -142,14 +146,17 @@ Core/app/                           ← 应用层 (编排 + 机器人逻辑)
 │  robot_def.hpp ←─── robot_topics.hpp                              │
 │    (硬件常量)        (枚举+结构体+Topic)                            │
 │                                                                   │
-│  ins_task/ (1kHz)   daemon_task/ (100Hz)   ui_task/ (~1Hz)        │
+│  ins_task/ (1kHz)   robot_task/ (200Hz)   motor_task/ (1kHz)      │
+│  daemon_task/ (100Hz)   ui_task/ (~1Hz)                           │
 │                                                                   │
-│  robot_task/ (200Hz)                                              │
-│    ├── cmd ──→ 发布命令                                            │
+│  robot_task/                                                       │
+│    └── cmd ──→ 发布命令 Topic                                      │
+│                                                                   │
+│  motor_task/                                                       │
 │    ├── chassis ──→ 麦轮运动学                                      │
-│    ├── gimbal ──→ (PID 在 ins_task 中 1kHz)                       │
-│    ├── shoot ──→ 摩擦轮/拨弹                                       │
-│    └── FlushAll()                                                 │
+│    ├── gimbal  ──→ 结合 ins_topic 的 1kHz 闭环                    │
+│    ├── shoot   ──→ 摩擦轮/拨弹                                     │
+│    └── FlushAll()  (单写者, 唯一发送出口)                          │
 │                                                                   │
 │  所有子系统通过 Topic<T> 通信, 零直接依赖                            │
 ├──────────────────────────────────────────────────────────────────┤
@@ -173,7 +180,7 @@ Core/app/                           ← 应用层 (编排 + 机器人逻辑)
 | 阶段 | basic_framework (C) | powerful_framework (C++) |
 |---|---|---|
 | 外设初始化 | `main.c` → `MX_*_Init()` | 同 |
-| C++ 入口 | `RobotInit()` → `BSPInit()` + `OSTaskInit()` | `RobotInit()` → `InsTaskStart()` + 未来任务 |
+| C++ 入口 | `RobotInit()` → `BSPInit()` + `OSTaskInit()` | `RobotInit()` → `InsTaskStart()` + `MotorTaskStart()` + 未来任务 |
 | 调度器启动 | `osKernelStart()` | 同 |
 | `freertos.c` | 仅 USB init + terminate | 同 (不碰 CubeMX 生成文件) |
 
@@ -194,7 +201,8 @@ main.c (C):
 robot.cpp (C++):
   extern "C" void RobotInit() {
       InsTaskStart();            // 创建 1 kHz INS 任务
-      // RobotTaskStart();       // 未来: 200 Hz 主任务
+      // MotorTaskStart();       // 未来: 1 kHz 电机闭环任务
+      // RobotTaskStart();       // 未来: 200 Hz 指令任务
       // DaemonTaskStart();      // 未来: 100 Hz 看门狗
   }
 ```
@@ -211,12 +219,12 @@ basic_framework 有 5 个独立 FreeRTOS 任务:
 | basic_framework 任务 | 频率 | 内容 | powerful_framework 对应 |
 |---|---|---|---|
 | `ins_task` (1 kHz) | AboveNormal | BMI088 + EKF + VisionSend() | `ins_task` (已实现) |
-| `motor_task` (1 kHz) | Normal | 所有电机 PID 计算 + CAN 发送 | **不单独建任务** (见下文) |
+| `motor_task` (1 kHz) | Normal | 所有电机 PID 计算 + CAN 发送 | `motor_task` (单写者) |
 | `robot_task` (200 Hz) | Normal | CMD 设定目标 + Chassis/Gimbal/Shoot 逻辑 | `robot_task` |
 | `daemon_task` (100 Hz) | Normal | 离线检测 (Daemon) + BuzzerTask() | `daemon_task` |
 | `ui_task` (~1 Hz) | Normal | 裁判系统 UI 绘制 | `ui_task` |
 
-### 5.2 为什么不单独建 motor_task?
+### 5.2 为什么需要单独 motor_task?
 
 basic_framework 的设计:
 - `robot_task` (200 Hz): 设定电机目标值 (setpoint)
@@ -224,29 +232,32 @@ basic_framework 的设计:
 
 这依赖于**全局电机注册表** (`DJIMotorInstance` 静态数组), 所有电机集中管理。
 
-powerful_framework 的设计:
-- `Motor<D,C>` 是模板, 电机由各子系统**分散持有** (chassis 持有 4 个, gimbal 持有 2 个)
-- 没有全局电机注册表, 无法集中遍历
-- `Motor::Update()` 同时完成 PID 计算 + CAN 发送
+powerful_framework 当前实现中, `DjiDriver` 使用静态共享发送缓冲区（`SetOutput()` 写缓冲，`FlushAll()` 发送并清空）。
+若 `ins_task`、`robot_task` 同时调用 `Motor::Update()/SetOutput()/FlushAll()`，会出现跨任务竞争和频率失真。
 
-因此电机 PID 频率 = 调用它的任务频率。具体策略:
+因此采用 **single-writer** 设计：
+- `robot_task` / `ins_task` 只负责发布目标值（Topic）
+- `motor_task` 是唯一允许调用 `Motor::Update()/SetOutput()/FlushAll()` 的任务
+- CAN 发送出口只有一个，避免并发写共享发送缓冲
+
+具体策略:
 
 | 电机 | 所在任务 | PID 频率 | 说明 |
 |---|---|---|---|
-| 底盘 M3508 ×4 | robot_task | 200 Hz | 底盘电机对频率不敏感 |
-| 摩擦轮 M3508 ×2 | robot_task | 200 Hz | 速度环, 200 Hz 够用 |
-| 拨弹盘 M2006 ×1 | robot_task | 200 Hz | 角度环, 200 Hz 够用 |
-| **云台 GM6020 ×2** | **ins_task** | **1 kHz** | 云台需要高频 PID, 与 IMU 同步 |
+| 底盘 M3508 ×4 | motor_task | 200 Hz (分频) | `motor_task` 每 1ms 跑, 每 5 次更新一次 |
+| 摩擦轮 M3508 ×2 | motor_task | 200 Hz (分频) | 速度环 |
+| 拨弹盘 M2006 ×1 | motor_task | 200 Hz (分频) | 角度/速度环 |
+| 云台 GM6020 ×2 | motor_task | 1 kHz | 每周期更新, 读取最新 IMU |
 
-> 云台电机放在 ins_task 中, 在 `ins->Update()` 之后立即执行 PID,
-> 读到的 IMU 数据零延迟, 控制效果最优。
+> 这样既保证云台 1 kHz, 又避免跨任务竞争 `DjiDriver` 发送缓冲区。
 
 ### 5.3 任务总表
 
 | 任务 | 频率 | 优先级 | 栈 (words) | 职责 |
 |---|---|---|---|---|
-| `ins_task` | 1 kHz | Realtime | 512 | BMI088→EKF→InsData→Topic→云台电机PID→温控 |
-| `robot_task` | 200 Hz | Normal | 512 | CMD + Chassis + Shoot (顺序执行) + DjiDriver::FlushAll() |
+| `ins_task` | 1 kHz | Realtime | 512 | BMI088→EKF→InsData→Topic→温控 |
+| `robot_task` | 200 Hz | Normal | 512 | CMD + 模式决策 + 发布各子系统目标 Topic |
+| `motor_task` | 1 kHz | Normal | 512 | 统一电机闭环（云台1k/底盘发射分频）+ `DjiDriver::FlushAll()` |
 | `daemon_task` | 100 Hz | Normal | 128 | 离线检测 + 蜂鸣器 |
 | `ui_task` | ~1 Hz | BelowNormal | 512 | 裁判系统 UI 绘制 |
 
@@ -258,32 +269,23 @@ powerful_framework 的设计:
   │   ├── 读取遥控器/键鼠/视觉
   │   ├── 模式决策
   │   └── 发布: chassis_cmd, gimbal_cmd, shoot_cmd
-  │
-  ├─ ShootTask()
-  │   ├── 订阅: shoot_cmd
-  │   ├── 摩擦轮/拨弹盘控制
-  │   ├── 电机 Update() (PID + 输出)
-  │   └── 发布: shoot_feed
-  │
-  ├─ ChassisTask()
-  │   ├── 订阅: chassis_cmd
-  │   ├── 麦轮运动学
-  │   ├── 功率限制
-  │   ├── 电机 Update() (PID + 输出)
-  │   └── 发布: chassis_feed
-  │
-  └─ DjiDriver::FlushAll()   // 一次性发送所有 CAN 帧
 
 每 1ms (ins_task):
-  ┌─ BMI088 读取 → Ins 更新 → Topic<InsData> 发布
+  └─ BMI088 读取 → Ins 更新 → Topic<InsData> 发布 → 温控(500 Hz)
+
+每 1ms (motor_task):
+  ┌─ 订阅: chassis_cmd / gimbal_cmd / shoot_cmd / ins_topic
   │
-  ├─ GimbalTask()             // 云台在 ins_task 中 1kHz 执行
-  │   ├── 订阅: gimbal_cmd, ins_topic
-  │   ├── 模式切换 (零力/自由/陀螺仪)
-  │   ├── 电机 Update() (PID + 输出)
-  │   └── 发布: gimbal_feed
+  ├─ GimbalTask()             // 每周期执行, 1 kHz
+  │   ├── IMU 反馈闭环
+  │   ├── 电机 Update()
+  │   └── 发布 gimbal_feed
   │
-  └─ 温控 (500 Hz)
+  ├─ 每 5 周期执行一次 (200 Hz):
+  │   ├── ChassisTask()       // 麦轮 + 功率限制 + 电机 Update + 发布 chassis_feed
+  │   └── ShootTask()         // 摩擦轮/拨弹盘 + 电机 Update + 发布 shoot_feed
+  │
+  └─ DjiDriver::FlushAll()    // 唯一 CAN 发送出口 (单写者)
 
 每 10ms (daemon_task):
   ├─ DaemonTask()             // 遍历所有注册的 daemon 实例, 计数器递减
@@ -468,7 +470,7 @@ RC 左拨杆:
 **`CalcOffsetAngle()`**: 从 GimbalFeedData 的编码器值计算底盘-云台 yaw 偏差,
 处理 0-360° 跨越, 写入 `chassis_cmd.offset_angle`。
 
-### 8.2 Chassis (chassis.cpp)
+### 8.2 Chassis (motor_task/chassis.cpp)
 
 **持有资源**:
 - 4 × `Motor<DjiDriver, CascadePid>` (M3508, hcan1, id 1-4)
@@ -507,7 +509,7 @@ vt_rb =  vx + vy - wz * d_rb
 d = sqrt((WHEEL_BASE/2 ± OFFSET_X)² + (TRACK_WIDTH/2 ± OFFSET_Y)²)
 ```
 
-### 8.3 Gimbal (gimbal.cpp)
+### 8.3 Gimbal (motor_task/gimbal.cpp)
 
 **持有资源**:
 - 2 × `Motor<DjiDriver, CascadePid>` (GM6020, yaw on hcan1, pitch on hcan2)
@@ -520,7 +522,7 @@ d = sqrt((WHEEL_BASE/2 ± OFFSET_X)² + (TRACK_WIDTH/2 ± OFFSET_Y)²)
 // GimbalInit() 中:
 static InsData gimbal_ins;   // 文件作用域, 供电机外部反馈指针使用
 
-// GimbalTask() 中:
+// GimbalTask() 中 (由 motor_task 1kHz 调用):
 ins_reader->Read(gimbal_ins);                        // 每周期从 Topic 读取
 yaw_motor.SetExternalFeedback(&gimbal_ins.yaw_total, // 角度
                               &gimbal_ins.euler[2]);  // 角速度 (待确认轴向)
@@ -533,7 +535,7 @@ FREE_MODE   → 使用编码器反馈 (MOTOR_FEED)
 GYRO_MODE   → 使用 IMU 反馈 (OTHER_FEED), yaw 用 YawTotal, pitch 用 Pitch
 ```
 
-### 8.4 Shoot (shoot.cpp)
+### 8.4 Shoot (motor_task/shoot.cpp)
 
 **持有资源**:
 - 2 × `Motor<DjiDriver, CascadePid>` (M3508 摩擦轮, hcan2, id 1-2)
@@ -699,22 +701,23 @@ inline constexpr int8_t GYRO2GIMBAL_DIR_ROLL   = 1;
 
 ### Phase 2: CMD + 底盘
 5. `robot_task/cmd.cpp` — 遥控器初始化 + 输入映射
-6. `robot_task/chassis.cpp` — 4 × M3508 + 麦轮运动学
-7. `robot_task/robot_task.cpp` — 200 Hz 主任务框架
+6. `robot_task/robot_task.cpp` — 200 Hz 指令任务框架（仅发布目标）
+7. `motor_task/motor_task.cpp` — 1 kHz 单写者电机任务 + FlushAll
 
 ### Phase 3: 云台 + 发射
-8. `robot_task/gimbal.cpp` — 2 × GM6020 + IMU 反馈 (在 ins_task 中 1 kHz 执行)
-9. `robot_task/shoot.cpp` — 摩擦轮 + 拨弹盘
+8. `motor_task/chassis.cpp` — 4 × M3508 + 麦轮运动学
+9. `motor_task/gimbal.cpp` — 2 × GM6020 + IMU 反馈 (1 kHz 执行)
+10. `motor_task/shoot.cpp` — 摩擦轮 + 拨弹盘
 
 ### Phase 4: 外围
-10. `daemon_task/` — 离线检测 + 蜂鸣器
-11. 功率限制集成 (PowerLimiter + SuperCap)
-12. 视觉通信 (ins_task 中发送, 中断接收)
-13. `ui_task/` — 裁判系统 UI
+11. `daemon_task/` — 离线检测 + 蜂鸣器
+12. 功率限制集成 (PowerLimiter + SuperCap)
+13. 视觉通信 (ins_task 中发送, 中断接收)
+14. `ui_task/` — 裁判系统 UI
 
 ### Phase 5: 多板
-14. CAN 通信层封装
-15. 双板条件编译测试
+15. CAN 通信层封装
+16. 双板条件编译测试
 
 ## 12. 关键设计模式总结
 
@@ -727,5 +730,5 @@ inline constexpr int8_t GYRO2GIMBAL_DIR_ROLL   = 1;
 | **文件作用域 static** | 每个 app 的状态都是 static, 等价于单例但无 class 开销 |
 | **Motor 模板零虚函数** | `Motor<DjiDriver, CascadePid>` 编译期组合, 零运行时开销 |
 | **ISP 防火墙** | ins_data.hpp / robot_topics.hpp 是轻量头文件, 不传递 heavy 依赖 |
-| **云台 1 kHz** | 云台电机 PID 在 ins_task 中执行, 与 IMU 同步, 零延迟反馈 |
-| **无 motor_task** | 电机由持有者驱动, 不需要全局注册表和集中式任务 |
+| **云台 1 kHz** | 云台电机 PID 在 motor_task 中 1kHz 执行, 每周期读取最新 IMU |
+| **motor_task 单写者** | 仅 motor_task 调用 `SetOutput/FlushAll`, 消除跨任务 CAN 发送竞争 |
