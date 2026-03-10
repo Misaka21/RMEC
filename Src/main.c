@@ -36,6 +36,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 extern void DWTInit_C(uint32_t CPU_Freq_mHz);
+extern void RobotInit(void);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -120,6 +121,7 @@ int main(void)
   MX_DAC_Init();
   /* USER CODE BEGIN 2 */
   DWTInit_C(168);
+  RobotInit();
   /* USER CODE END 2 */
 
   /* Call init function for freertos objects (in freertos.c) */

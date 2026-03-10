@@ -82,7 +82,43 @@ Core/app/
 **关键**: 没有任何一条从 Chassis→Gimbal 或 CMD→Chassis 的直接依赖。
 所有 app 只依赖 `robot_types.hpp` + `robot_topics.hpp` + 自身需要的 Module 层头文件。
 
-## 4. 任务调度
+## 4. 启动流程
+
+### 4.1 与 basic_framework 对比
+
+| 阶段 | basic_framework (C) | powerful_framework (C++) |
+|---|---|---|
+| 外设初始化 | `main.c` → `MX_*_Init()` | 同 |
+| C++ 入口 | `RobotInit()` → `BSPInit()` + `OSTaskInit()` | `RobotInit()` → `InsTaskStart()` + 未来任务 |
+| 调度器启动 | `osKernelStart()` | 同 |
+| `freertos.c` | 仅 USB init + terminate | 同 (不碰 CubeMX 生成文件) |
+
+### 4.2 启动时序
+
+```
+main.c (C):
+  HAL_Init()
+  SystemClock_Config()
+  MX_GPIO/DMA/CAN/SPI/TIM/USART_Init()
+  DWTInit_C(168)
+  RobotInit()                  ← C++ 侧唯一入口
+  MX_FREERTOS_Init()           ← CubeMX 默认 (defaultTask → USB init → terminate)
+  osKernelStart()              ← 调度器启动, 所有任务开始运行
+```
+
+```
+robot.cpp (C++):
+  extern "C" void RobotInit() {
+      InsTaskStart();            // 创建 1 kHz INS 任务
+      // RobotTaskStart();       // 未来: 200 Hz 主任务
+      // DaemonTaskStart();      // 未来: 100 Hz 看门狗
+  }
+```
+
+**设计原则**: `main.c` 和 `freertos.c` 保持 CubeMX 可重新生成状态, 只在 `USER CODE` 区域添加
+`RobotInit()` 调用。所有 FreeRTOS 任务创建通过 `TaskManager` 在 C++ 侧完成。
+
+## 5. 任务调度
 
 | 任务 | 频率 | 优先级 | 栈 (words) | 职责 |
 |---|---|---|---|---|
@@ -132,9 +168,9 @@ Core/app/
   BMI088 读取 → Ins 更新 → Topic 发布 → 温控
 ```
 
-## 5. Topic 通信拓扑
+## 6. Topic 通信拓扑
 
-### 5.1 Topic 定义 (robot_topics.hpp)
+### 6.1 Topic 定义 (robot_topics.hpp)
 
 ```cpp
 #pragma once
@@ -156,7 +192,7 @@ inline Topic<GimbalFeedData>   gimbal_feed_topic;
 inline Topic<ShootFeedData>    shoot_feed_topic;
 ```
 
-### 5.2 数据流
+### 6.2 数据流
 
 ```
 RC/键鼠                                           裁判系统
@@ -176,7 +212,7 @@ RC/键鼠                                           裁判系统
                        └─────────┘
 ```
 
-### 5.3 订阅矩阵
+### 6.3 订阅矩阵
 
 | Topic | 发布者 | 订阅者 |
 |---|---|---|
@@ -188,9 +224,9 @@ RC/键鼠                                           裁判系统
 | `shoot_cmd_topic` | cmd | shoot |
 | `shoot_feed_topic` | shoot | cmd |
 
-## 6. 数据类型设计 (robot_types.hpp)
+## 7. 数据类型设计 (robot_types.hpp)
 
-### 6.1 模式枚举
+### 7.1 模式枚举
 
 ```cpp
 enum class RobotStatus : uint8_t { STOP, READY };
@@ -221,7 +257,7 @@ enum class LoaderMode : uint8_t {
 enum class BulletSpeed : uint8_t { SMALL_15, SMALL_18, SMALL_30 };
 ```
 
-### 6.2 命令结构体 (CMD → 子系统)
+### 7.2 命令结构体 (CMD → 子系统)
 
 ```cpp
 struct ChassisCmdData {
@@ -250,7 +286,7 @@ struct ShootCmdData {
 };
 ```
 
-### 6.3 反馈结构体 (子系统 → CMD)
+### 7.3 反馈结构体 (子系统 → CMD)
 
 ```cpp
 struct ChassisFeedData {
@@ -272,9 +308,9 @@ struct ShootFeedData {
 
 所有结构体必须满足 `std::is_trivially_copyable_v<T>` (Topic 要求)。
 
-## 7. 各子系统设计
+## 8. 各子系统设计
 
-### 7.1 CMD (robot_cmd.cpp)
+### 8.1 CMD (robot_cmd.cpp)
 
 **职责**: 唯一的模式决策者。读取遥控器/键鼠/视觉输入, 生成控制指令。
 
@@ -301,7 +337,7 @@ RC 左拨杆:
 **`CalcOffsetAngle()`**: 从 GimbalFeedData 的编码器值计算底盘-云台 yaw 偏差,
 处理 0-360° 跨越, 写入 `chassis_cmd.offset_angle`。
 
-### 7.2 Chassis (chassis.cpp)
+### 8.2 Chassis (chassis.cpp)
 
 **持有资源**:
 - 4 × `Motor<DjiDriver, CascadePid>` (M3508, hcan1, id 1-4)
@@ -340,7 +376,7 @@ vt_rb =  vx + vy - wz * d_rb
 d = sqrt((WHEEL_BASE/2 ± OFFSET_X)² + (TRACK_WIDTH/2 ± OFFSET_Y)²)
 ```
 
-### 7.3 Gimbal (gimbal.cpp)
+### 8.3 Gimbal (gimbal.cpp)
 
 **持有资源**:
 - 2 × `Motor<DjiDriver, CascadePid>` (GM6020, yaw on hcan1, pitch on hcan2)
@@ -366,7 +402,7 @@ FREE_MODE   → 使用编码器反馈 (MOTOR_FEED)
 GYRO_MODE   → 使用 IMU 反馈 (OTHER_FEED), yaw 用 YawTotal, pitch 用 Pitch
 ```
 
-### 7.4 Shoot (shoot.cpp)
+### 8.4 Shoot (shoot.cpp)
 
 **持有资源**:
 - 2 × `Motor<DjiDriver, CascadePid>` (M3508 摩擦轮, hcan2, id 1-2)
@@ -392,9 +428,9 @@ LOAD_BURST   → 速度环, ref = shoot_rate × 360 × REDUCTION_RATIO / 8
 LOAD_REVERSE → 速度环, ref = -xxx (卡弹反转)
 ```
 
-## 8. 多板支持
+## 9. 多板支持
 
-### 8.1 板型定义 (robot_def.hpp)
+### 9.1 板型定义 (robot_def.hpp)
 
 ```cpp
 // 三选一, 互斥
@@ -403,7 +439,7 @@ LOAD_REVERSE → 速度环, ref = -xxx (卡弹反转)
 // #define GIMBAL_BOARD  // 云台板 (CMD + 云台 + 发射)
 ```
 
-### 8.2 条件编译模式
+### 9.2 条件编译模式
 
 ```cpp
 // robot_task.cpp init_func:
@@ -417,7 +453,7 @@ LOAD_REVERSE → 速度环, ref = -xxx (卡弹反转)
 #endif
 ```
 
-### 8.3 双板 CAN 通信 (未来扩展)
+### 9.3 双板 CAN 通信 (未来扩展)
 
 单板模式下, CMD→Chassis 使用 `Topic<ChassisCmdData>` 内存通信。
 双板模式下, GIMBAL_BOARD 的 CMD 通过 CAN 发送 `ChassisCmdData` 到 CHASSIS_BOARD:
@@ -431,7 +467,7 @@ GIMBAL_BOARD:                        CHASSIS_BOARD:
 实现方式: 在 `robot_cmd.cpp` 中用 `#ifdef GIMBAL_BOARD` 替换 Topic 发布为 CAN 发送。
 CAN 传输层封装为统一接口, 使切换对子系统透明。
 
-## 9. robot_def.hpp 常量
+## 10. robot_def.hpp 常量
 
 ```cpp
 #pragma once
@@ -472,7 +508,7 @@ inline constexpr int8_t GYRO2GIMBAL_DIR_PITCH  = 1;
 inline constexpr int8_t GYRO2GIMBAL_DIR_ROLL   = 1;
 ```
 
-## 10. 实现路线图
+## 11. 实现路线图
 
 ### Phase 1: 基础框架 (当前可做)
 1. `robot_def.hpp` — 板型宏 + 机械常量
@@ -498,7 +534,7 @@ inline constexpr int8_t GYRO2GIMBAL_DIR_ROLL   = 1;
 13. CAN 通信层封装
 14. 双板条件编译测试
 
-## 11. 关键设计模式总结
+## 12. 关键设计模式总结
 
 | 模式 | 说明 |
 |---|---|
