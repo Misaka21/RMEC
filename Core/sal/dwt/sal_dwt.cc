@@ -120,3 +120,8 @@ double DWTInstance::DWTGetDeltaT64()
 
     return dt;
 }
+
+extern "C" void DWTInit_C(uint32_t CPU_Freq_mHz)
+{
+    DWTInstance::DWTInit(CPU_Freq_mHz);
+}
