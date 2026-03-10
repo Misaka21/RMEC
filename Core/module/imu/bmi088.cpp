@@ -58,6 +58,10 @@ uint8_t Bmi088::InitAccel() {
     AccelWriteReg(bmi088::ACC_SOFTRESET, bmi088::ACC_SOFTRESET_VALUE);
     DwtInstance::DwtDelay(bmi088::ACCEL_RESET_DELAY_S);
 
+    // 软复位后 accel 回到 I2C 模式, 需再做一次 dummy read 重新激活 SPI
+    AccelRead(bmi088::ACC_CHIP_ID, &whoami, 1);
+    DwtInstance::DwtDelay(bmi088::REG_READ_DELAY_S);
+
     // 验证 Chip ID
     AccelRead(bmi088::ACC_CHIP_ID, &whoami, 1);
     if (whoami != bmi088::ACC_CHIP_ID_VALUE)
@@ -271,7 +275,8 @@ void Bmi088::HeaterCtrl(float dt) {
     if (heat_pwm_ == nullptr)
         return;
     float out = heat_pid_.Calculate(data_.temperature, heat_target_temp_, dt);
-    heat_pwm_->SetDutyCycle(Clamp(out, 0.0f, 1.0f));
+    uint32_t pwm = static_cast<uint32_t>(Clamp(out, 0.0f, static_cast<float>(UINT16_MAX)));
+    heat_pwm_->SetCompare(pwm);
 }
 
 // ========================= 校准 =========================

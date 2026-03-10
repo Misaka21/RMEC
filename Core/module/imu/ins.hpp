@@ -16,7 +16,7 @@ public:
         std::memset(motion_accel_b_, 0, sizeof(motion_accel_b_));
     }
 
-    void Update(const float gyro[3], const float accel[3], float dt) {
+    void Update(const float gyro[3], const float accel[3], float dt, float temperature) {
         ekf_.Update(gyro[0], gyro[1], gyro[2],
                     accel[0], accel[1], accel[2], dt);
 
@@ -25,6 +25,7 @@ public:
             data_.gyro[i] = gyro[i];
             data_.accel[i] = accel[i];
         }
+        data_.temperature = temperature;
 
         // 复制 EKF 输出
         const auto& out = ekf_.Output();
