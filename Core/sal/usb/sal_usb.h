@@ -16,7 +16,7 @@
  *        USB设备端的波特率/校验位/数据位等由上位机(主机端)决定,设备端不需要关心这些配置
  *
  * @note  1. USB Full Speed模式下单次传输最大为64字节,超出可能丢包
- *        2. USB是单例外设,只允许创建一个USBInstance(第二次构造会触发DEBUG_DEADLOCK)
+ *        2. USB是单例外设,只允许创建一个UsbInstance(第二次构造会触发DEBUG_DEADLOCK)
  *        3. 接收缓冲区大小为APP_RX_DATA_SIZE(默认2048字节),由usbd_cdc_if.c中定义
  *
  * @attention 此模块修改了CubeMX生成的usbd_cdc_if.c和usbd_cdc_if.h(在USER CODE区域内),
@@ -32,15 +32,15 @@ namespace sal {
      * @note  与CAN/UART等多实例外设不同,USB只有一个物理端口,因此采用单例模式
      *        内部通过静态指针instance_实现单例,构造时自动注册回调到底层CDC驱动
      */
-    class USBInstance {
+    class UsbInstance {
     public:
         /* ========================= 类型定义 ========================= */
 
         // 接收回调: 参数为接收缓冲区指针和本次接收的字节数
         // 比参考项目的C函数指针更灵活,可以绑定lambda/成员函数
-        using USBRxCallback = std::function<void(uint8_t *buf, uint16_t len)>;
+        using UsbRxCallback = std::function<void(uint8_t *buf, uint16_t len)>;
         // 发送完成回调: 参数为本次发送的字节数
-        using USBTxCallback = std::function<void(uint16_t len)>;
+        using UsbTxCallback = std::function<void(uint16_t len)>;
 
         /**
          * @brief 初始化配置结构体
@@ -48,22 +48,22 @@ namespace sal {
          * @note rx_cbk: 接收到数据时的回调,在USB中断上下文中执行,不要做耗时操作
          *       tx_cbk: 发送完成的回调(可选),大多数场景下不需要
          */
-        struct USBConfig {
-            USBRxCallback rx_cbk = nullptr; // 接收完成回调,通常必须设置
-            USBTxCallback tx_cbk = nullptr; // 发送完成回调,可选
+        struct UsbConfig {
+            UsbRxCallback rx_cbk = nullptr; // 接收完成回调,通常必须设置
+            UsbTxCallback tx_cbk = nullptr; // 发送完成回调,可选
         };
 
     private:
         /* ========================= 单例管理 ========================= */
-        static USBInstance *instance_; // 单例指针,构造时设置,全局唯一
+        static UsbInstance *instance_; // 单例指针,构造时设置,全局唯一
 
         /* ========================= 私有成员 ========================= */
         uint8_t       *rx_buf_;  // 指向usbd_cdc_if.c中的UserRxBufferFS,大小为APP_RX_DATA_SIZE
-        USBRxCallback  rx_cbk_;  // module层注册的接收回调
-        USBTxCallback  tx_cbk_;  // module层注册的发送完成回调
+        UsbRxCallback  rx_cbk_;  // module层注册的接收回调
+        UsbTxCallback  tx_cbk_;  // module层注册的发送完成回调
 
         /* ========================= 底层回调桥接 =========================
-         * CDC驱动的回调是C函数指针(USBCallback类型),无法直接绑定std::function
+         * CDC驱动的回调是C函数指针(UsbCallback类型),无法直接绑定std::function
          * 这两个静态函数作为桥接: C回调 → 静态函数 → instance_的std::function成员
          */
         static void RxCallbackDispatch(uint16_t len);
@@ -81,8 +81,8 @@ namespace sal {
          * @attention USB设备在usbd_conf.c的HAL_PCD_MspInit()中会执行软件复位(模拟拔插),
          *            因此构造后上位机会重新枚举设备
          */
-        explicit USBInstance(const USBConfig &config);
-        ~USBInstance() = default;
+        explicit UsbInstance(const UsbConfig &config);
+        ~UsbInstance() = default;
 
         /**
          * @brief 通过USB CDC发送数据

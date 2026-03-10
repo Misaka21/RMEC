@@ -20,9 +20,9 @@
 #define TIME_ELAPSE(string, code)                             \
     [&]() -> float                                            \
     {                                                         \
-        float tstart = DWTInstance::DWTGetTimeline_ms();      \
+        float tstart = DwtInstance::DwtGetTimeline_ms();      \
         code;                                                 \
-        float dt = DWTInstance::DWTGetTimeline_ms() - tstart; \
+        float dt = DwtInstance::DwtGetTimeline_ms() - tstart; \
         LOGINFO("[DWT] %s = %f s\r\n", string, dt);           \
         return dt;                                            \
     }
@@ -50,20 +50,20 @@
 #define TIMEOUT(code, timeout)                                      \
     [&]() -> bool                                                   \
     {                                                               \
-        float tstart = DWTInstance::DWTGetTimeline_ms();            \
-        while (DWTInstance::DWTGetTimeline_ms() - tstart < timeout) \
+        float tstart = DwtInstance::DwtGetTimeline_ms();            \
+        while (DwtInstance::DwtGetTimeline_ms() - tstart < timeout) \
         {                                                           \
             code;                                                   \
         }                                                           \
         return false;                                               \
     }
 
-class DWTInstance
+class DwtInstance
 {
 
 private:
     /* 内建时间类,维护时间轴供DWTGetTimeline()使用*/
-    static struct DWT_time_t
+    static struct DwtTime
     {
         uint32_t s;
         uint16_t ms;
@@ -86,14 +86,14 @@ private:
      *       不过,使用dwt的初衷是定时不被中断/任务等因素影响,因此该实现仍然有其存在的意义
      *
      */
-    static void DWT_CNT_Update(void);
+    static void DwtCntUpdate(void);
 
     /**
      * @brief DWT更新时间轴函数,会被三个timeline函数调用
      * @attention 如果长时间不调用timeline函数,则需要手动调用该函数更新时间轴
      *            否则CYCCNT溢出后定时和时间轴不准确
      */
-    static void DWT_SysTimeUpdate(void);
+    static void DwtSysTimeUpdate(void);
 
 public:
     /**
@@ -101,15 +101,15 @@ public:
      *
      * @param CPU_Freq_mHz c板为168MHz,A板为180MHz,和时钟树&时钟配置有关
      */
-    static void DWTInit(uint32_t CPU_Freq_mHz);
+    static void DwtInit(uint32_t CPU_Freq_mHz);
 
 public:
     /* ----------------------↓ 直接供外部调用 ↓----------------------*/
 
     // 当前时间轴,以初始化后的时间为基准
-    static float DWTGetTimeline_s(void);
-    static float DWTGetTimeline_ms(void);
-    static uint64_t DWTGetTimeline_us(void);
+    static float DwtGetTimeline_s(void);
+    static float DwtGetTimeline_ms(void);
+    static uint64_t DwtGetTimeline_us(void);
 
     /**
      * @brief DWT延时函数,单位为秒/s
@@ -118,19 +118,19 @@ public:
      *
      * @param Delay 延时时间,单位为秒/s
      */
-    static void DWTDelay(float Delay);
+    static void DwtDelay(float Delay);
 
 public:
-    DWTInstance();
-    ~DWTInstance() = default;
+    DwtInstance();
+    ~DwtInstance() = default;
     /**
      * @brief 获取两次调用之间的时间间隔,单位为秒/s
      *
      * @param cnt_last 上一次调用的时间戳
      * @return float 时间间隔,单位为秒/s
      */
-    float DWTGetDeltaT();
+    float DwtGetDeltaT();
 
-    /* DWTGetDeltaT()的双精度浮点版本 */
-    double DWTGetDeltaT64();
+    /* DwtGetDeltaT()的双精度浮点版本 */
+    double DwtGetDeltaT64();
 };

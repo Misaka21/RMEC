@@ -5,21 +5,21 @@
 #include <chrono>
 
 // 静态成员定义
-DWTInstance::DWT_time_t DWTInstance::dwt_time_{};
-uint32_t DWTInstance::CPU_FREQ_Hz    = 0;
-uint32_t DWTInstance::CPU_FREQ_Hz_ms = 0;
-uint32_t DWTInstance::CPU_FREQ_Hz_us = 0;
-uint32_t DWTInstance::cyc_round_cnt_ = 0;
-uint64_t DWTInstance::CYCCNT64       = 0;
+DwtInstance::DwtTime DwtInstance::dwt_time_{};
+uint32_t DwtInstance::CPU_FREQ_Hz    = 0;
+uint32_t DwtInstance::CPU_FREQ_Hz_ms = 0;
+uint32_t DwtInstance::CPU_FREQ_Hz_us = 0;
+uint32_t DwtInstance::cyc_round_cnt_ = 0;
+uint64_t DwtInstance::CYCCNT64       = 0;
 
-void DWTInstance::DWT_CNT_Update(void)
+void DwtInstance::DwtCntUpdate(void)
 {
-    static bit_locker bit_lock;
+    static BitLocker bit_lock;
     static uint32_t CYCCNT_LAST; // 上锁资源,防止重入
 
     if (bit_lock.try_lock())
     {
-        lock_guard guard(bit_lock);
+        LockGuard guard(bit_lock);
         volatile uint32_t cnt_now = DWT->CYCCNT;
         if (cnt_now < CYCCNT_LAST)
             cyc_round_cnt_++;
@@ -29,12 +29,12 @@ void DWTInstance::DWT_CNT_Update(void)
         return;
 }
 
-void DWTInstance::DWT_SysTimeUpdate(void)
+void DwtInstance::DwtSysTimeUpdate(void)
 {
     volatile uint32_t cnt_now = DWT->CYCCNT;
     static uint64_t CNT_TEMP1, CNT_TEMP2, CNT_TEMP3;
 
-    DWT_CNT_Update();
+    DwtCntUpdate();
 
     CYCCNT64 = (uint64_t)cyc_round_cnt_ * (uint64_t)UINT32_MAX + (uint64_t)cnt_now;
     CNT_TEMP1 = CYCCNT64 / CPU_FREQ_Hz;
@@ -45,7 +45,7 @@ void DWTInstance::DWT_SysTimeUpdate(void)
     dwt_time_.us = CNT_TEMP3 / CPU_FREQ_Hz_us;
 }
 
-void DWTInstance::DWTInit(uint32_t CPU_Freq_mHz)
+void DwtInstance::DwtInit(uint32_t CPU_Freq_mHz)
 {
     /* 使能DWT外设 */
     CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
@@ -59,34 +59,34 @@ void DWTInstance::DWTInit(uint32_t CPU_Freq_mHz)
     CPU_FREQ_Hz_us = CPU_FREQ_Hz / 1000000;
     cyc_round_cnt_ = 0;
 
-    DWT_CNT_Update();
+    DwtCntUpdate();
 }
 
-float DWTInstance::DWTGetTimeline_s(void)
+float DwtInstance::DwtGetTimeline_s(void)
 {
-    DWT_SysTimeUpdate();
+    DwtSysTimeUpdate();
 
     float DWT_Timelinef32 = dwt_time_.s + dwt_time_.ms * 0.001f + dwt_time_.us * 0.000001f;
 
     return DWT_Timelinef32;
 }
 
-float DWTInstance::DWTGetTimeline_ms(void)
+float DwtInstance::DwtGetTimeline_ms(void)
 {
-    DWT_SysTimeUpdate();
+    DwtSysTimeUpdate();
 
     float DWT_Timelinef32 = dwt_time_.s * 1000 + dwt_time_.ms + dwt_time_.us * 0.001f;
 
     return DWT_Timelinef32;
 }
 
-uint64_t DWTInstance::DWTGetTimeline_us(void)
+uint64_t DwtInstance::DwtGetTimeline_us(void)
 {
-    DWT_SysTimeUpdate();
+    DwtSysTimeUpdate();
     return dwt_time_.s * 1000000 + dwt_time_.ms * 1000 + dwt_time_.us;
 }
 
-void DWTInstance::DWTDelay(float Delay)
+void DwtInstance::DwtDelay(float Delay)
 {
     uint32_t tickstart = DWT->CYCCNT;
     float wait = Delay;
@@ -95,33 +95,33 @@ void DWTInstance::DWTDelay(float Delay)
         ;
 }
 
-DWTInstance::DWTInstance() : dwt_cnt_(0)
+DwtInstance::DwtInstance() : dwt_cnt_(0)
 {
 }
 
-float DWTInstance::DWTGetDeltaT()
+float DwtInstance::DwtGetDeltaT()
 {
     volatile uint32_t cnt_now = DWT->CYCCNT;
     float dt = ((uint32_t)(cnt_now - dwt_cnt_)) / ((float)(CPU_FREQ_Hz));
     dwt_cnt_ = cnt_now;
 
-    DWT_CNT_Update();
+    DwtCntUpdate();
 
     return dt;
 }
 
-double DWTInstance::DWTGetDeltaT64()
+double DwtInstance::DwtGetDeltaT64()
 {
     volatile uint32_t cnt_now = DWT->CYCCNT;
     double dt = ((uint32_t)(cnt_now - dwt_cnt_)) / ((double)(CPU_FREQ_Hz));
     dwt_cnt_ = cnt_now;
 
-    DWT_CNT_Update();
+    DwtCntUpdate();
 
     return dt;
 }
 
 extern "C" void DWTInit_C(uint32_t CPU_Freq_mHz)
 {
-    DWTInstance::DWTInit(CPU_Freq_mHz);
+    DwtInstance::DwtInit(CPU_Freq_mHz);
 }

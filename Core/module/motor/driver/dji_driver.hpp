@@ -7,19 +7,19 @@
 #include <cstdint>
 
 /// 速度和电流低通滤波系数
-inline constexpr float kSpeedSmoothCoef   = 0.85f;
-inline constexpr float kCurrentSmoothCoef = 0.9f;
+inline constexpr float SPEED_SMOOTH_COEF   = 0.85f;
+inline constexpr float CURRENT_SMOOTH_COEF = 0.9f;
 
 /// DJI 电机类型
 enum class DjiMotorType : uint8_t {
-    kM3508 = 0,
-    kM2006,
-    kGM6020,
+    M3508 = 0,
+    M2006,
+    GM6020,
 };
 
 /// DJI 电机驱动配置
 struct DjiDriverConfig {
-    DjiMotorType motor_type = DjiMotorType::kM3508;
+    DjiMotorType motor_type = DjiMotorType::M3508;
     CAN_HandleTypeDef* can_handle = nullptr;
     uint8_t motor_id = 1;  // 电调/拨码 ID, 1-8(M3508/M2006), 1-7(GM6020)
 };
@@ -40,9 +40,9 @@ struct DjiDriverConfig {
 ///   Group 5: CAN2, 0x2FF, GM6020 ID 5-7
 class DjiDriver {
 public:
-    static constexpr uint8_t kMaxMotors   = 12;
-    static constexpr uint8_t kGroupCount  = 6;
-    static constexpr uint16_t kOfflineThreshold = 100;  // 100 次 Tick 未收到反馈视为离线
+    static constexpr uint8_t MAX_MOTORS   = 12;
+    static constexpr uint8_t GROUP_COUNT  = 6;
+    static constexpr uint16_t OFFLINE_THRESHOLD = 100;  // 100 次 Tick 未收到反馈视为离线
 
     explicit DjiDriver(const DjiDriverConfig& cfg);
 
@@ -57,7 +57,7 @@ public:
     void TickOffline() { online_cnt_++; }
 
     /// 是否在线
-    bool IsOnline() const { return online_cnt_ < kOfflineThreshold; }
+    bool IsOnline() const { return online_cnt_ < OFFLINE_THRESHOLD; }
 
     /// 获取电机类型
     DjiMotorType MotorType() const { return motor_type_; }
@@ -75,12 +75,12 @@ private:
     // ---- 发送分组 ----
     struct TxGroup {
         uint8_t data[8] = {};               // 发送缓冲区
-        sal::CANInstance* sender = nullptr;  // 借用该组某个电机的 CAN 实例发送
+        sal::CanInstance* sender = nullptr;  // 借用该组某个电机的 CAN 实例发送
         bool enabled = false;               // 是否有电机注册到此组
     };
 
-    static TxGroup tx_groups_[kGroupCount];
-    static constexpr uint16_t kGroupStdIds[kGroupCount] = {
+    static TxGroup tx_groups_[GROUP_COUNT];
+    static constexpr uint16_t GROUP_STD_IDS[GROUP_COUNT] = {
         0x200, 0x1FF, 0x2FF,  // CAN1
         0x200, 0x1FF, 0x2FF,  // CAN2
     };
@@ -88,8 +88,8 @@ private:
     // ---- 实例成员 ----
     DjiMotorType motor_type_{};
     MotorMeasure measure_{};
-    sal::CANInstance* can_ = nullptr;       // 接收反馈用（生命周期由 SAL 管理）
+    sal::CanInstance* can_ = nullptr;       // 接收反馈用（生命周期由 SAL 管理）
     uint8_t group_idx_ = 0;                // 所属 TxGroup 索引
     uint8_t msg_offset_ = 0;               // 帧内字节偏移 (0/2/4/6)
-    uint16_t online_cnt_ = kOfflineThreshold;  // 初始视为离线
+    uint16_t online_cnt_ = OFFLINE_THRESHOLD;  // 初始视为离线
 };

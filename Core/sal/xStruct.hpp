@@ -13,7 +13,7 @@
  * @tparam T
  */
 template <typename T>
-class loop_queue
+class LoopQueue
 {
 private:
     uint16_t max_size_ = 0;
@@ -23,9 +23,9 @@ private:
     std::unique_ptr<T[]> data_;
 
 public:
-    loop_queue(){};
-    loop_queue(uint16_t size) : max_size_(size), data_(std::make_unique<T[]>(size)) {}
-    ~loop_queue() { data_.reset(); } // 需要手动添加析构函数
+    LoopQueue(){};
+    LoopQueue(uint16_t size) : max_size_(size), data_(std::make_unique<T[]>(size)) {}
+    ~LoopQueue() { data_.reset(); } // 需要手动添加析构函数
 
     void resize(uint16_t size)
     {

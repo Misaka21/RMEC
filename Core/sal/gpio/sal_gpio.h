@@ -6,29 +6,29 @@
 
 namespace sal {
 
-    class GPIOInstance {
+    class GpioInstance {
         friend void HAL_GPIO_EXTI_Callback(uint16_t);
 
     public:
-        using GPIOPtr          = GPIOInstance*;
-        using GPIOExtiCallback = std::function<void()>;
+        using GpioPtr          = GpioInstance*;
+        using GpioExtiCallback = std::function<void()>;
 
-        struct GPIOConfig {
+        struct GpioConfig {
             GPIO_TypeDef      *port     = nullptr;
             uint16_t           pin      = 0;
-            GPIOExtiCallback   exti_cbk = nullptr;
+            GpioExtiCallback   exti_cbk = nullptr;
         };
 
     private:
-        static std::vector<GPIOPtr> instance_list_;
+        static std::vector<GpioPtr> instance_list_;
 
         GPIO_TypeDef      *port_;
         uint16_t           pin_;
-        GPIOExtiCallback   exti_cbk_;
+        GpioExtiCallback   exti_cbk_;
 
     public:
-        GPIOInstance(const GPIOConfig &config);
-        ~GPIOInstance() = default;
+        GpioInstance(const GpioConfig &config);
+        ~GpioInstance() = default;
 
         void Set();
         void Reset();

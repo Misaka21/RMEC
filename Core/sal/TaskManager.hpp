@@ -11,12 +11,12 @@
  *
  * 非模板类,header-only实现。构造时自动创建FreeRTOS线程,
  * 线程入口函数先调用init_func一次,然后循环调用task_func + osDelay。
- * 使用两个DWTInstance测量任务周期和执行耗时。
+ * 使用两个DwtInstance测量任务周期和执行耗时。
  */
 class TaskManager
 {
 public:
-    struct task_dbg_info
+    struct TaskDbgInfo
     {
         float ex_dt     = 0;
         float ex_dt_mx  = 0;
@@ -39,8 +39,8 @@ private:
     std::function<void()> init_func_;
     uint32_t              period_ms_;
     osThreadDef_t         thread_def_;
-    DWTInstance            dwt_dt_;     // 测量任务周期
-    DWTInstance            dwt_time_;   // 测量任务执行耗时
+    DwtInstance            dwt_dt_;     // 测量任务周期
+    DwtInstance            dwt_time_;   // 测量任务执行耗时
 
     /**
      * @brief 静态跳板函数,转换arg为TaskManager*后调用成员函数
@@ -57,14 +57,14 @@ private:
         for (;;)
         {
             // 测量任务周期
-            self->dbg_info.ex_dt = self->dwt_dt_.DWTGetDeltaT();
+            self->dbg_info.ex_dt = self->dwt_dt_.DwtGetDeltaT();
             if (self->dbg_info.ex_dt > self->dbg_info.ex_dt_mx)
                 self->dbg_info.ex_dt_mx = self->dbg_info.ex_dt;
 
             // 测量任务执行耗时
-            self->dwt_time_.DWTGetDeltaT(); // 重置计时起点
+            self->dwt_time_.DwtGetDeltaT(); // 重置计时起点
             self->task_func_();
-            self->dbg_info.ex_time = self->dwt_time_.DWTGetDeltaT();
+            self->dbg_info.ex_time = self->dwt_time_.DwtGetDeltaT();
             if (self->dbg_info.ex_time > self->dbg_info.ex_time_mx)
                 self->dbg_info.ex_time_mx = self->dbg_info.ex_time;
 
@@ -74,7 +74,7 @@ private:
 
 public:
     osThreadId    task_handle = nullptr;
-    task_dbg_info dbg_info;
+    TaskDbgInfo dbg_info;
 
     TaskManager() = default;
 

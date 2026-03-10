@@ -13,16 +13,16 @@
     } while (0)
 
 /* 互斥锁,仅单核处理器可用 */
-class bit_locker
+class BitLocker
 {
-    friend class lock_guard;
+    friend class LockGuard;
 
 private:
     volatile uint8_t bit = 0;
 
 public:
-    bit_locker() = default;
-    ~bit_locker() = default;
+    BitLocker() = default;
+    ~BitLocker() = default;
 
     bool try_lock()
     {
@@ -34,12 +34,12 @@ public:
 };
 
 /* 配合互斥锁,完成锁资源操作后自动析构释放锁 */
-class lock_guard
+class LockGuard
 {
 private:
     volatile uint8_t *bit_ptr = nullptr;
 
 public:
-    lock_guard(bit_locker &locker) : bit_ptr(&locker.bit){};
-    ~lock_guard() { *bit_ptr = 0; };
+    LockGuard(BitLocker &locker) : bit_ptr(&locker.bit){};
+    ~LockGuard() { *bit_ptr = 0; };
 };

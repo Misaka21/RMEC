@@ -5,15 +5,15 @@
 
 /// PID 改进项标志位
 namespace pid {
-inline constexpr uint32_t kNone                     = 0x00;
-inline constexpr uint32_t kIntegralLimit             = 0x01;
-inline constexpr uint32_t kDerivativeOnMeasurement   = 0x02;
-inline constexpr uint32_t kTrapezoidalIntegral       = 0x04;
-inline constexpr uint32_t kProportionalOnMeasurement = 0x08;
-inline constexpr uint32_t kOutputFilter              = 0x10;
-inline constexpr uint32_t kChangingIntegrationRate   = 0x20;
-inline constexpr uint32_t kDerivativeFilter          = 0x40;
-inline constexpr uint32_t kErrorHandle               = 0x80;
+inline constexpr uint32_t NONE                       = 0x00;
+inline constexpr uint32_t INTEGRAL_LIMIT             = 0x01;
+inline constexpr uint32_t DERIVATIVE_ON_MEASUREMENT  = 0x02;
+inline constexpr uint32_t TRAPEZOIDAL_INTEGRAL       = 0x04;
+inline constexpr uint32_t PROPORTIONAL_ON_MEASUREMENT = 0x08;
+inline constexpr uint32_t OUTPUT_FILTER              = 0x10;
+inline constexpr uint32_t CHANGING_INTEGRATION_RATE  = 0x20;
+inline constexpr uint32_t DERIVATIVE_FILTER          = 0x40;
+inline constexpr uint32_t ERROR_HANDLE               = 0x80;
 } // namespace pid
 
 /// PID 控制器配置
@@ -23,7 +23,7 @@ struct PidConfig {
     float kd = 0;
     float max_out = 0;
     float dead_band = 0;
-    uint32_t improve_flags = pid::kNone;
+    uint32_t improve_flags = pid::NONE;
     float integral_limit = 0;
     float coef_a = 0;               // 变速积分上限宽度
     float coef_b = 0;               // 变速积分下限（全积分区域）
@@ -33,8 +33,8 @@ struct PidConfig {
 
 /// PID 堵转检测错误类型
 enum class PidError : uint8_t {
-    kNone = 0,
-    kMotorBlocked = 1,
+    NONE = 0,
+    MOTOR_BLOCKED = 1,
 };
 
 /// PID 控制器（位置式，dt 通过参数注入，不依赖 DWT）
@@ -79,5 +79,5 @@ private:
 
     // error handle
     uint32_t error_count_{};
-    PidError error_type_{PidError::kNone};
+    PidError error_type_{PidError::NONE};
 };

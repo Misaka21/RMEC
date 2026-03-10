@@ -8,22 +8,22 @@ namespace sal
     // static uint8_t can_dev_idx = 0; // 已经注册的CAN设备数量
 
     // 为静态成员变量分配内存
-    std::vector<CANInstance::CANPtr> CANInstance::instance_[CAN_DEV_NUM];
-    CANInstance::FIFOPtr CANInstance::fifo_ptr_[CAN_DEV_NUM];
-    uint8_t CANInstance::can1_filter_idx_ = 0;
-    uint8_t CANInstance::can2_filter_idx_ = 14;
+    std::vector<CanInstance::CanPtr> CanInstance::instance_[CAN_DEV_NUM];
+    CanInstance::FifoPtr CanInstance::fifo_ptr_[CAN_DEV_NUM];
+    uint8_t CanInstance::can1_filter_idx_ = 0;
+    uint8_t CanInstance::can2_filter_idx_ = 14;
 
-    CANInstance::CANInstance(const CANConfig &config)
+    CanInstance::CanInstance(const CanConfig &config)
     {
         // sanity check
         if (config.handle == nullptr)
-            DEBUG_DEADLOCK("[sal::CANInstance] handle is nullptr");
+            DEBUG_DEADLOCK("[sal::CanInstance] handle is nullptr");
         if (config.tx_id > 0x7FF || config.rx_id > 0x7FF || config.tx_id == config.rx_id || !config.tx_id || !config.rx_id)
-            DEBUG_DEADLOCK("[sal::CANInstance] invalid id");
+            DEBUG_DEADLOCK("[sal::CanInstance] invalid id");
         if (config.fifo_timeout_us == 0 || config.fifo_timeout_us > 250)
-            LOGWARNING("[sal::CANInstance] timeout: %d, tx may fail or RTibility can be affected", config.fifo_timeout_us);
+            LOGWARNING("[sal::CanInstance] timeout: %d, tx may fail or RTibility can be affected", config.fifo_timeout_us);
         if (config.rx_cbk == nullptr)
-            LOGINFO("[sal::CANInstance] rx_cbk is nullptr, ru sure bout this?");
+            LOGINFO("[sal::CanInstance] rx_cbk is nullptr, ru sure bout this?");
 
         handle_ = config.handle;
         tx_id_ = config.tx_id; // @todo 好像存着没什么用?
@@ -38,12 +38,12 @@ namespace sal
 
         if (can1_filter_idx_ == 0 && can2_filter_idx_ == 14)
         {
-            CANServiceInit(); // 注册第一个实例前初始化CAN服务
+            CanServiceInit(); // 注册第一个实例前初始化CAN服务
             // 初始化tx fifo
             for (uint8_t i = 0; i < CAN_DEV_NUM; i++)
-                fifo_ptr_[i] = std::make_shared<loop_queue<can_msg_t>>(CAN_TX_FIFO_SIZE);
+                fifo_ptr_[i] = std::make_shared<LoopQueue<CanMsg>>(CAN_TX_FIFO_SIZE);
         }
-        CANAddFilter();
+        CanAddFilter();
 
         uint8_t can_dev = handle_->Instance == CAN1 ? 0 : 1; // 用于区分CAN1和CAN2
         // 加入列表,绑定fifo
@@ -54,7 +54,7 @@ namespace sal
     // 判断是否使用FIFO,若不使用则将bit置1并循环等待空闲并完成发送
     // 等待FIFO空闲,将msg放入FIFO,
     // FIFO等待超时则返回false,递增busy_cnt
-    bool CANInstance::CANTransmit(const can_msg_t &msg, uint16_t block_timeout_us)
+    bool CanInstance::CanTransmit(const CanMsg &msg, uint16_t block_timeout_us)
     {
         // fifo为空,放入后直接启动发送
         if (fifo_bind_->empty())
@@ -75,7 +75,7 @@ namespace sal
         return false;
     }
 
-    void CANInstance::CANServiceInit()
+    void CanInstance::CanServiceInit()
     {
 #ifndef CAN2
         HAL_CAN_Start(&hcan);
@@ -91,7 +91,7 @@ namespace sal
 #endif // 兼容双CAN MCU
     }
 
-    void CANInstance::CANAddFilter()
+    void CanInstance::CanAddFilter()
     {
         CAN_FilterTypeDef filter_cfg;
         // bank0-13给can1用,14-27给can2用,当只有can1时,SlaveStartFilterBank参数无效,且只有14个过滤器,都归CAN1使用
@@ -112,9 +112,9 @@ namespace sal
         handle_->Instance == CAN1 ? (can1_filter_idx_++) : (can2_filter_idx_++); // 根据can_handle判断是CAN1还是CAN2,然后自增
 
         if (can1_filter_idx_ > 13)
-            DEBUG_DEADLOCK("[sal::CANInstance] too many instances in CAN1");
+            DEBUG_DEADLOCK("[sal::CanInstance] too many instances in CAN1");
         if (can2_filter_idx_ > 27)
-            DEBUG_DEADLOCK("[sal::CANInstance] too many instances in CAN2");
+            DEBUG_DEADLOCK("[sal::CanInstance] too many instances in CAN2");
 
         HAL_CAN_ConfigFilter(handle_, &filter_cfg);
     }
@@ -124,21 +124,21 @@ namespace sal
      *
      * @param fifo 发送缓冲队列
      */
-    void CANInstance::TxQueueFront(FIFOPtr &fifo)
+    void CanInstance::TxQueueFront(FifoPtr &fifo)
     {
         if (fifo->size())
         {
-            can_msg_t &msg = fifo->front();
+            CanMsg &msg = fifo->front();
             HAL_CAN_AddTxMessage(msg.instance->handle_, &msg.instance->tx_header_, msg.data, &msg.instance->tx_mailbox_);
         }
     }
 
-    void CANInstance::CANTxFinishCallback(CAN_HandleTypeDef *hcan)
+    void CanInstance::CanTxFinishCallback(CAN_HandleTypeDef *hcan)
     {
         uint8_t can_dev = hcan->Instance == CAN1 ? 0 : 1; // 用于区分CAN1和CAN2
 
         // 从发送缓冲队列中删除已经发送完成的消息
-        CANInstance *ins = fifo_ptr_[can_dev]->pop().instance;
+        CanInstance *ins = fifo_ptr_[can_dev]->pop().instance;
         if (ins->tx_cbk_)
             ins->tx_cbk_();
 
@@ -146,18 +146,18 @@ namespace sal
         // @todo 可以做条件编译小优化,如果只有CAN1直接调用
     }
 
-    // 三个发送完成回调函数,用于处理发送完成后的事情,统一调用CANTxFinishCallback()
+    // 三个发送完成回调函数,用于处理发送完成后的事情,统一调用CanTxFinishCallback()
     void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
     {
-        sal::CANInstance::CANTxFinishCallback(hcan);
+        sal::CanInstance::CanTxFinishCallback(hcan);
     }
     void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
     {
-        sal::CANInstance::CANTxFinishCallback(hcan);
+        sal::CanInstance::CanTxFinishCallback(hcan);
     }
     void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
     {
-        sal::CANInstance::CANTxFinishCallback(hcan);
+        sal::CanInstance::CanTxFinishCallback(hcan);
     }
 
     /**
@@ -168,7 +168,7 @@ namespace sal
      *
      * @todo 考虑替换HAL_CAN_GetRxMessage(),自己实现直接读取寄存器获取接收id,避免二次复制data
      */
-    void CANInstance::CANFIFOxCallback(CAN_HandleTypeDef *hcan, uint32_t fifo)
+    void CanInstance::CanFifoxCallback(CAN_HandleTypeDef *hcan, uint32_t fifo)
     {
         // 临时变量,用于存储接收到的消息
         uint8_t rx_tmp[8] = {0};
@@ -192,11 +192,11 @@ namespace sal
     // 下面两个函数是HAL库的回调函数的重载,用于处理接收到的消息
     void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
     {
-        CANInstance::CANFIFOxCallback(hcan, CAN_RX_FIFO0); // 调用我们自己写的函数来处理消息
+        CanInstance::CanFifoxCallback(hcan, CAN_RX_FIFO0); // 调用我们自己写的函数来处理消息
     }
 
     void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
     {
-        CANInstance::CANFIFOxCallback(hcan, CAN_RX_FIFO1); // 调用我们自己写的函数来处理消息
+        CanInstance::CanFifoxCallback(hcan, CAN_RX_FIFO1); // 调用我们自己写的函数来处理消息
     }
 }

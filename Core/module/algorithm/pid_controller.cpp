@@ -31,7 +31,7 @@ void PidController::Reset() noexcept {
     output_ = last_output_ = 0;
     last_dout_ = 0;
     error_count_ = 0;
-    error_type_ = PidError::kNone;
+    error_type_ = PidError::NONE;
 }
 
 void PidController::ErrorHandle() noexcept {
@@ -43,13 +43,13 @@ void PidController::ErrorHandle() noexcept {
         error_count_ = 0;
     }
     if (error_count_ > 500) {
-        error_type_ = PidError::kMotorBlocked;
+        error_type_ = PidError::MOTOR_BLOCKED;
     }
 }
 
 float PidController::Calculate(float measure, float ref, float dt) noexcept {
     // 堵转检测
-    if (improve_flags_ & pid::kErrorHandle)
+    if (improve_flags_ & pid::ERROR_HANDLE)
         ErrorHandle();
 
     // 更新输入
@@ -64,11 +64,11 @@ float PidController::Calculate(float measure, float ref, float dt) noexcept {
         dout_ = kd_ * (err_ - last_err_) / dt;
 
         // 梯形积分
-        if (improve_flags_ & pid::kTrapezoidalIntegral)
+        if (improve_flags_ & pid::TRAPEZOIDAL_INTEGRAL)
             iterm_ = ki_ * ((err_ + last_err_) / 2.0f) * dt;
 
         // 变速积分
-        if (improve_flags_ & pid::kChangingIntegrationRate) {
+        if (improve_flags_ & pid::CHANGING_INTEGRATION_RATE) {
             if (err_ * iout_ > 0) {
                 float abs_err = std::fabs(err_);
                 if (abs_err <= coef_b_) {
@@ -82,16 +82,16 @@ float PidController::Calculate(float measure, float ref, float dt) noexcept {
         }
 
         // 微分先行（D on measurement）
-        if (improve_flags_ & pid::kDerivativeOnMeasurement)
+        if (improve_flags_ & pid::DERIVATIVE_ON_MEASUREMENT)
             dout_ = kd_ * (last_measure_ - measure_) / dt;
 
         // 微分滤波
-        if (improve_flags_ & pid::kDerivativeFilter)
+        if (improve_flags_ & pid::DERIVATIVE_FILTER)
             dout_ = dout_ * dt / (derivative_lpf_rc_ + dt) +
                     last_dout_ * derivative_lpf_rc_ / (derivative_lpf_rc_ + dt);
 
         // 积分限幅 + 抗饱和
-        if (improve_flags_ & pid::kIntegralLimit) {
+        if (improve_flags_ & pid::INTEGRAL_LIMIT) {
             float temp_iout = iout_ + iterm_;
             float temp_output = pout_ + iout_ + dout_;
             if (std::fabs(temp_output) > max_out_) {
@@ -112,7 +112,7 @@ float PidController::Calculate(float measure, float ref, float dt) noexcept {
         output_ = pout_ + iout_ + dout_;
 
         // 输出滤波
-        if (improve_flags_ & pid::kOutputFilter)
+        if (improve_flags_ & pid::OUTPUT_FILTER)
             output_ = output_ * dt / (output_lpf_rc_ + dt) +
                       last_output_ * output_lpf_rc_ / (output_lpf_rc_ + dt);
 

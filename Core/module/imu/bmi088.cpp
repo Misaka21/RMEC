@@ -19,7 +19,7 @@ void Bmi088::AccelRead(uint8_t reg, uint8_t* buf, uint8_t len) {
     uint8_t rx[8] = {};
     tx[0] = 0x80u | reg;
     spi_acc_->CSReset();
-    spi_acc_->SPITransmitReceive(tx, rx, len + 2);
+    spi_acc_->SpiTransmitReceive(tx, rx, len + 2);
     spi_acc_->CSSet();
     for (uint8_t i = 0; i < len; ++i)
         buf[i] = rx[i + 2];
@@ -31,7 +31,7 @@ void Bmi088::GyroRead(uint8_t reg, uint8_t* buf, uint8_t len) {
     uint8_t rx[8] = {};
     tx[0] = 0x80u | reg;
     spi_gyro_->CSReset();
-    spi_gyro_->SPITransmitReceive(tx, rx, len + 1);
+    spi_gyro_->SpiTransmitReceive(tx, rx, len + 1);
     spi_gyro_->CSSet();
     for (uint8_t i = 0; i < len; ++i)
         buf[i] = rx[i + 1];
@@ -51,28 +51,28 @@ uint8_t Bmi088::InitAccel() {
     uint8_t whoami = 0;
 
     // accel 上电默认 I2C 模式, 做一次 dummy read 切换到 SPI 模式
-    AccelRead(bmi088::kAccChipId, &whoami, 1);
-    DWTInstance::DWTDelay(bmi088::kRegReadDelayS);
+    AccelRead(bmi088::ACC_CHIP_ID, &whoami, 1);
+    DwtInstance::DwtDelay(bmi088::REG_READ_DELAY_S);
 
     // 软复位
-    AccelWriteReg(bmi088::kAccSoftreset, bmi088::kAccSoftresetValue);
-    DWTInstance::DWTDelay(bmi088::kAccelResetDelayS);
+    AccelWriteReg(bmi088::ACC_SOFTRESET, bmi088::ACC_SOFTRESET_VALUE);
+    DwtInstance::DwtDelay(bmi088::ACCEL_RESET_DELAY_S);
 
     // 验证 Chip ID
-    AccelRead(bmi088::kAccChipId, &whoami, 1);
-    if (whoami != bmi088::kAccChipIdValue)
-        return static_cast<uint8_t>(bmi088::Bmi088Error::kNoSensor);
-    DWTInstance::DWTDelay(bmi088::kRegReadDelayS);
+    AccelRead(bmi088::ACC_CHIP_ID, &whoami, 1);
+    if (whoami != bmi088::ACC_CHIP_ID_VALUE)
+        return static_cast<uint8_t>(bmi088::Bmi088Error::NO_SENSOR);
+    DwtInstance::DwtDelay(bmi088::REG_READ_DELAY_S);
 
     // 写寄存器表并回读验证
     uint8_t error = 0;
     for (const auto& entry : kAccelInitTable) {
         AccelWriteReg(entry.reg, entry.value);
-        DWTInstance::DWTDelay(bmi088::kRegWriteDelayS);
+        DwtInstance::DwtDelay(bmi088::REG_WRITE_DELAY_S);
 
         uint8_t readback = 0;
         AccelRead(entry.reg, &readback, 1);
-        DWTInstance::DWTDelay(bmi088::kRegWriteDelayS);
+        DwtInstance::DwtDelay(bmi088::REG_WRITE_DELAY_S);
 
         if (readback != entry.value)
             error |= entry.error_code;
@@ -82,25 +82,25 @@ uint8_t Bmi088::InitAccel() {
 
 uint8_t Bmi088::InitGyro() {
     // 软复位
-    GyroWriteReg(bmi088::kGyroSoftreset, bmi088::kGyroSoftresetValue);
-    DWTInstance::DWTDelay(bmi088::kGyroResetDelayS);
+    GyroWriteReg(bmi088::GYRO_SOFTRESET, bmi088::GYRO_SOFTRESET_VALUE);
+    DwtInstance::DwtDelay(bmi088::GYRO_RESET_DELAY_S);
 
     // 验证 Chip ID
     uint8_t whoami = 0;
-    GyroRead(bmi088::kGyroChipId, &whoami, 1);
-    if (whoami != bmi088::kGyroChipIdValue)
-        return static_cast<uint8_t>(bmi088::Bmi088Error::kNoSensor);
-    DWTInstance::DWTDelay(bmi088::kRegReadDelayS);
+    GyroRead(bmi088::GYRO_CHIP_ID, &whoami, 1);
+    if (whoami != bmi088::GYRO_CHIP_ID_VALUE)
+        return static_cast<uint8_t>(bmi088::Bmi088Error::NO_SENSOR);
+    DwtInstance::DwtDelay(bmi088::REG_READ_DELAY_S);
 
     // 写寄存器表并回读验证
     uint8_t error = 0;
     for (const auto& entry : kGyroInitTable) {
         GyroWriteReg(entry.reg, entry.value);
-        DWTInstance::DWTDelay(bmi088::kRegReadDelayS);
+        DwtInstance::DwtDelay(bmi088::REG_READ_DELAY_S);
 
         uint8_t readback = 0;
         GyroRead(entry.reg, &readback, 1);
-        DWTInstance::DWTDelay(bmi088::kRegReadDelayS);
+        DwtInstance::DwtDelay(bmi088::REG_READ_DELAY_S);
 
         if (readback != entry.value)
             error |= entry.error_code;
@@ -131,18 +131,18 @@ void Bmi088::DecodeTemp(const uint8_t* buf) {
         (static_cast<uint16_t>(buf[0]) << 3) | (buf[1] >> 5));
     if (raw > 1023)
         raw -= 2048;
-    data_.temperature = static_cast<float>(raw) * bmi088::kTempFactor + bmi088::kTempOffset;
+    data_.temperature = static_cast<float>(raw) * bmi088::TEMP_FACTOR + bmi088::TEMP_OFFSET;
 }
 
 // ========================= EXTI 回调 =========================
 
 void Bmi088::OnAccelDataReady() {
     uint8_t buf[6] = {};
-    AccelRead(bmi088::kAccelXoutL, buf, 6);
+    AccelRead(bmi088::ACCEL_XOUT_L, buf, 6);
     DecodeAccel(buf);
 
     uint8_t tbuf[2] = {};
-    AccelRead(bmi088::kTempM, tbuf, 2);
+    AccelRead(bmi088::TEMP_M, tbuf, 2);
     DecodeTemp(tbuf);
 
     update_flag_.acc = 1;
@@ -150,7 +150,7 @@ void Bmi088::OnAccelDataReady() {
 
 void Bmi088::OnGyroDataReady() {
     uint8_t buf[6] = {};
-    GyroRead(bmi088::kGyroXL, buf, 6);
+    GyroRead(bmi088::GYRO_XL, buf, 6);
     DecodeGyro(buf);
     update_flag_.gyro = 1;
 }
@@ -164,26 +164,26 @@ Bmi088::Bmi088(const Bmi088Config& cfg)
       pre_cali_(cfg.pre_cali)
 {
     // 1. 创建 2 个 SPI 实例 (共享 SPI handle, 不同 CS)
-    sal::SPIInstance::SPIConfig acc_spi_cfg{};
+    sal::SpiInstance::SpiConfig acc_spi_cfg{};
     acc_spi_cfg.handle    = cfg.spi_handle;
-    acc_spi_cfg.xfer_type = sal::SPI_XFER_BLOCK;
+    acc_spi_cfg.xfer_type = sal::SpiXferType::BLOCK;
     acc_spi_cfg.cs_port   = cfg.acc_cs_port;
     acc_spi_cfg.cs_pin    = cfg.acc_cs_pin;
-    spi_acc_ = new sal::SPIInstance(acc_spi_cfg);
+    spi_acc_ = new sal::SpiInstance(acc_spi_cfg);
 
-    sal::SPIInstance::SPIConfig gyro_spi_cfg{};
+    sal::SpiInstance::SpiConfig gyro_spi_cfg{};
     gyro_spi_cfg.handle    = cfg.spi_handle;
-    gyro_spi_cfg.xfer_type = sal::SPI_XFER_BLOCK;
+    gyro_spi_cfg.xfer_type = sal::SpiXferType::BLOCK;
     gyro_spi_cfg.cs_port   = cfg.gyro_cs_port;
     gyro_spi_cfg.cs_pin    = cfg.gyro_cs_pin;
-    spi_gyro_ = new sal::SPIInstance(gyro_spi_cfg);
+    spi_gyro_ = new sal::SpiInstance(gyro_spi_cfg);
 
     // 2. 创建 PWM 实例 + 初始化 PID
     if (cfg.heat_tim_handle != nullptr) {
-        sal::PWMInstance::PWMConfig pwm_cfg{};
+        sal::PwmInstance::PwmConfig pwm_cfg{};
         pwm_cfg.handle  = cfg.heat_tim_handle;
         pwm_cfg.channel = cfg.heat_tim_channel;
-        heat_pwm_ = new sal::PWMInstance(pwm_cfg);
+        heat_pwm_ = new sal::PwmInstance(pwm_cfg);
         heat_pwm_->Start();
     }
     heat_pid_.Init(cfg.heat_pid_config);
@@ -198,23 +198,23 @@ Bmi088::Bmi088(const Bmi088Config& cfg)
 
     // 4. 临时切换阻塞模式执行校准
     auto saved_mode = work_mode_;
-    work_mode_ = Bmi088WorkMode::kBlockPeriodic;
+    work_mode_ = Bmi088WorkMode::BLOCK_PERIODIC;
     Calibrate();
     work_mode_ = saved_mode;
 
     // 5. 若为触发模式, 注册 EXTI
-    if (work_mode_ == Bmi088WorkMode::kBlockTrigger) {
-        sal::GPIOInstance::GPIOConfig acc_int_cfg{};
+    if (work_mode_ == Bmi088WorkMode::BLOCK_TRIGGER) {
+        sal::GpioInstance::GpioConfig acc_int_cfg{};
         acc_int_cfg.port     = cfg.acc_int_port;
         acc_int_cfg.pin      = cfg.acc_int_pin;
         acc_int_cfg.exti_cbk = [this]() { OnAccelDataReady(); };
-        acc_int_ = new sal::GPIOInstance(acc_int_cfg);
+        acc_int_ = new sal::GpioInstance(acc_int_cfg);
 
-        sal::GPIOInstance::GPIOConfig gyro_int_cfg{};
+        sal::GpioInstance::GpioConfig gyro_int_cfg{};
         gyro_int_cfg.port     = cfg.gyro_int_port;
         gyro_int_cfg.pin      = cfg.gyro_int_pin;
         gyro_int_cfg.exti_cbk = [this]() { OnGyroDataReady(); };
-        gyro_int_ = new sal::GPIOInstance(gyro_int_cfg);
+        gyro_int_ = new sal::GpioInstance(gyro_int_cfg);
     }
 
     ready_ = true;
@@ -223,18 +223,18 @@ Bmi088::Bmi088(const Bmi088Config& cfg)
 // ========================= Acquire =========================
 
 bool Bmi088::Acquire(Bmi088Data& out) {
-    if (work_mode_ == Bmi088WorkMode::kBlockPeriodic) {
+    if (work_mode_ == Bmi088WorkMode::BLOCK_PERIODIC) {
         // 阻塞读取
         uint8_t buf[6] = {};
 
-        AccelRead(bmi088::kAccelXoutL, buf, 6);
+        AccelRead(bmi088::ACCEL_XOUT_L, buf, 6);
         DecodeAccel(buf);
 
-        GyroRead(bmi088::kGyroXL, buf, 6);
+        GyroRead(bmi088::GYRO_XL, buf, 6);
         DecodeGyro(buf);
 
         uint8_t tbuf[2] = {};
-        AccelRead(bmi088::kTempM, tbuf, 2);
+        AccelRead(bmi088::TEMP_M, tbuf, 2);
         DecodeTemp(tbuf);
 
         out = data_;
@@ -242,7 +242,7 @@ bool Bmi088::Acquire(Bmi088Data& out) {
     }
 
     // 触发模式: 检查 ISR 缓存
-    if (work_mode_ == Bmi088WorkMode::kBlockTrigger) {
+    if (work_mode_ == Bmi088WorkMode::BLOCK_TRIGGER) {
         bool updated = false;
         if (update_flag_.acc) {
             out.acc[0] = data_.acc[0];
@@ -281,11 +281,11 @@ static float NormOf3d(const float v[3]) {
 }
 
 void Bmi088::Calibrate() {
-    if (cali_mode_ == Bmi088CaliMode::kOnline) {
-        acc_coef_  = bmi088::kAccel6gSen;
-        gyro_sen_  = bmi088::kGyro2000Sen;
+    if (cali_mode_ == Bmi088CaliMode::ONLINE) {
+        acc_coef_  = bmi088::ACCEL_6G_SEN;
+        gyro_sen_  = bmi088::GYRO_2000_SEN;
 
-        float start_time = DWTInstance::DWTGetTimeline_s();
+        float start_time = DwtInstance::DwtGetTimeline_s();
         float gyro_max[3], gyro_min[3];
         float g_norm_temp, g_norm_max, g_norm_min;
         float gyro_diff[3], g_norm_diff;
@@ -294,18 +294,18 @@ void Bmi088::Calibrate() {
 
         do {
             // 超时回退到预校准
-            if (DWTInstance::DWTGetTimeline_s() - start_time > bmi088::kCaliTimeoutS) {
-                cali_mode_ = Bmi088CaliMode::kPreCalibrated;
+            if (DwtInstance::DwtGetTimeline_s() - start_time > bmi088::CALI_TIMEOUT_S) {
+                cali_mode_ = Bmi088CaliMode::PRE_CALIBRATED;
                 break;
             }
 
-            DWTInstance::DWTDelay(bmi088::kCaliSampleInterval);
+            DwtInstance::DwtDelay(bmi088::CALI_SAMPLE_INTERVAL);
             g_norm_ = 0;
             gyro_offset_[0] = gyro_offset_[1] = gyro_offset_[2] = 0;
             g_norm_diff = 0;
             gyro_diff[0] = gyro_diff[1] = gyro_diff[2] = 0;
 
-            for (uint16_t i = 0; i < bmi088::kCaliSampleCount; ++i) {
+            for (uint16_t i = 0; i < bmi088::CALI_SAMPLE_COUNT; ++i) {
                 // 校准时临时清零 offset, 读到的是 raw 数据
                 float saved_offset[3] = {gyro_offset_[0], gyro_offset_[1], gyro_offset_[2]};
                 gyro_offset_[0] = gyro_offset_[1] = gyro_offset_[2] = 0;
@@ -342,34 +342,34 @@ void Bmi088::Calibrate() {
                     gyro_diff[j] = gyro_max[j] - gyro_min[j];
 
                 // 运动检测: 超出阈值则提前退出内循环并重试
-                if (g_norm_diff > bmi088::kGNormDiffThreshold ||
-                    gyro_diff[0] > bmi088::kGyroDiffThreshold ||
-                    gyro_diff[1] > bmi088::kGyroDiffThreshold ||
-                    gyro_diff[2] > bmi088::kGyroDiffThreshold)
+                if (g_norm_diff > bmi088::G_NORM_DIFF_THRESHOLD ||
+                    gyro_diff[0] > bmi088::GYRO_DIFF_THRESHOLD ||
+                    gyro_diff[1] > bmi088::GYRO_DIFF_THRESHOLD ||
+                    gyro_diff[2] > bmi088::GYRO_DIFF_THRESHOLD)
                     break;
 
-                DWTInstance::DWTDelay(bmi088::kCaliSampleInterval);
+                DwtInstance::DwtDelay(bmi088::CALI_SAMPLE_INTERVAL);
             }
 
             // 求均值
-            g_norm_ /= static_cast<float>(bmi088::kCaliSampleCount);
+            g_norm_ /= static_cast<float>(bmi088::CALI_SAMPLE_COUNT);
             for (uint8_t i = 0; i < 3; ++i)
-                gyro_offset_[i] /= static_cast<float>(bmi088::kCaliSampleCount);
+                gyro_offset_[i] /= static_cast<float>(bmi088::CALI_SAMPLE_COUNT);
 
-        } while (g_norm_diff > bmi088::kGNormDiffThreshold ||
-                 std::fabs(g_norm_ - bmi088::kGNormExpected) > bmi088::kGNormDiffThreshold ||
-                 gyro_diff[0] > bmi088::kGyroDiffThreshold ||
-                 gyro_diff[1] > bmi088::kGyroDiffThreshold ||
-                 gyro_diff[2] > bmi088::kGyroDiffThreshold ||
-                 std::fabs(gyro_offset_[0]) > bmi088::kGyroOffsetThreshold ||
-                 std::fabs(gyro_offset_[1]) > bmi088::kGyroOffsetThreshold ||
-                 std::fabs(gyro_offset_[2]) > bmi088::kGyroOffsetThreshold);
+        } while (g_norm_diff > bmi088::G_NORM_DIFF_THRESHOLD ||
+                 std::fabs(g_norm_ - bmi088::G_NORM_EXPECTED) > bmi088::G_NORM_DIFF_THRESHOLD ||
+                 gyro_diff[0] > bmi088::GYRO_DIFF_THRESHOLD ||
+                 gyro_diff[1] > bmi088::GYRO_DIFF_THRESHOLD ||
+                 gyro_diff[2] > bmi088::GYRO_DIFF_THRESHOLD ||
+                 std::fabs(gyro_offset_[0]) > bmi088::GYRO_OFFSET_THRESHOLD ||
+                 std::fabs(gyro_offset_[1]) > bmi088::GYRO_OFFSET_THRESHOLD ||
+                 std::fabs(gyro_offset_[2]) > bmi088::GYRO_OFFSET_THRESHOLD);
     }
 
     // 离线校准 (或在线超时回退)
-    if (cali_mode_ == Bmi088CaliMode::kPreCalibrated) {
-        acc_coef_  = bmi088::kAccel6gSen;
-        gyro_sen_  = bmi088::kGyro2000Sen;
+    if (cali_mode_ == Bmi088CaliMode::PRE_CALIBRATED) {
+        acc_coef_  = bmi088::ACCEL_6G_SEN;
+        gyro_sen_  = bmi088::GYRO_2000_SEN;
         gyro_offset_[0] = pre_cali_.gyro_offset[0];
         gyro_offset_[1] = pre_cali_.gyro_offset[1];
         gyro_offset_[2] = pre_cali_.gyro_offset[2];
@@ -377,5 +377,5 @@ void Bmi088::Calibrate() {
     }
 
     // 修正加速度灵敏度
-    acc_coef_ *= bmi088::kGNormReference / g_norm_;
+    acc_coef_ *= bmi088::G_NORM_REFERENCE / g_norm_;
 }

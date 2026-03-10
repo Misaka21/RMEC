@@ -3,7 +3,7 @@
 namespace sal {
 
     // 单例指针初始化为nullptr,构造第一个实例时设置
-    USBInstance *USBInstance::instance_ = nullptr;
+    UsbInstance *UsbInstance::instance_ = nullptr;
 
     /**
      * @brief USB CDC实例构造函数
@@ -17,7 +17,7 @@ namespace sal {
      *          同时获取接收缓冲区指针(UserRxBufferFS)
      *       4. 通过RTT打印初始化成功日志
      */
-    USBInstance::USBInstance(const USBConfig &config)
+    UsbInstance::UsbInstance(const UsbConfig &config)
         : rx_buf_(nullptr),
           rx_cbk_(config.rx_cbk),
           tx_cbk_(config.tx_cbk)
@@ -42,7 +42,7 @@ namespace sal {
      * @note CDC_Transmit_FS()定义在usbd_cdc_if.c中,
      *       若上一次发送尚未完成(TxState != 0)会返回USBD_BUSY
      */
-    uint8_t USBInstance::Transmit(uint8_t *data, uint16_t len)
+    uint8_t UsbInstance::Transmit(uint8_t *data, uint16_t len)
     {
         return CDC_Transmit_FS(data, len);
     }
@@ -59,7 +59,7 @@ namespace sal {
      * @note 数据存放在rx_buf_(即UserRxBufferFS)中,
      *       此函数将缓冲区指针和长度一起传递给module层的rx_cbk_
      */
-    void USBInstance::RxCallbackDispatch(uint16_t len)
+    void UsbInstance::RxCallbackDispatch(uint16_t len)
     {
         if (instance_ && instance_->rx_cbk_)
             instance_->rx_cbk_(instance_->rx_buf_, len);
@@ -70,7 +70,7 @@ namespace sal {
      *
      * @param len 本次发送完成的数据字节数
      */
-    void USBInstance::TxCallbackDispatch(uint16_t len)
+    void UsbInstance::TxCallbackDispatch(uint16_t len)
     {
         if (instance_ && instance_->tx_cbk_)
             instance_->tx_cbk_(len);

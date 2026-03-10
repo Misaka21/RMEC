@@ -11,13 +11,13 @@
 // ========================= 工作模式 =========================
 
 enum class Bmi088WorkMode : uint8_t {
-    kBlockPeriodic,   // 阻塞轮询
-    kBlockTrigger,    // EXTI 触发 (ISR 内阻塞 SPI 读)
+    BLOCK_PERIODIC,   // 阻塞轮询
+    BLOCK_TRIGGER,    // EXTI 触发 (ISR 内阻塞 SPI 读)
 };
 
 enum class Bmi088CaliMode : uint8_t {
-    kOnline,          // 上电在线校准 (~6s)
-    kPreCalibrated,   // 使用预设参数
+    ONLINE,           // 上电在线校准 (~6s)
+    PRE_CALIBRATED,   // 使用预设参数
 };
 
 // ========================= 数据结构 =========================
@@ -38,8 +38,8 @@ struct Bmi088PreCali {
 // ========================= 配置 =========================
 
 struct Bmi088Config {
-    Bmi088WorkMode work_mode  = Bmi088WorkMode::kBlockPeriodic;
-    Bmi088CaliMode cali_mode  = Bmi088CaliMode::kOnline;
+    Bmi088WorkMode work_mode  = Bmi088WorkMode::BLOCK_PERIODIC;
+    Bmi088CaliMode cali_mode  = Bmi088CaliMode::ONLINE;
 
     // 共享 SPI 总线
     SPI_HandleTypeDef *spi_handle = nullptr;
@@ -52,7 +52,7 @@ struct Bmi088Config {
     GPIO_TypeDef *gyro_cs_port = nullptr;
     uint16_t      gyro_cs_pin  = 0;
 
-    // EXTI (仅 kBlockTrigger 模式)
+    // EXTI (仅 BLOCK_TRIGGER 模式)
     GPIO_TypeDef *acc_int_port  = nullptr;
     uint16_t      acc_int_pin   = 0;
     GPIO_TypeDef *gyro_int_port = nullptr;
@@ -97,33 +97,33 @@ private:
     };
 
     static constexpr RegEntry kAccelInitTable[] = {
-        {bmi088::kAccPwrCtrl,  bmi088::kAccEnableOn,
-         static_cast<uint8_t>(bmi088::Bmi088Error::kAccPwrCtrlError)},
-        {bmi088::kAccPwrConf,  bmi088::kAccPwrActiveMode,
-         static_cast<uint8_t>(bmi088::Bmi088Error::kAccPwrConfError)},
-        {bmi088::kAccConf,     static_cast<uint8_t>(bmi088::kAccNormal | bmi088::kAcc800Hz | bmi088::kAccConfMustSet),
-         static_cast<uint8_t>(bmi088::Bmi088Error::kAccConfError)},
-        {bmi088::kAccRange,    bmi088::kAccRange6g,
-         static_cast<uint8_t>(bmi088::Bmi088Error::kAccRangeError)},
-        {bmi088::kInt1IoCtrl,  static_cast<uint8_t>(bmi088::kAccInt1IoEnable | bmi088::kAccInt1GpioPP | bmi088::kAccInt1GpioLow),
-         static_cast<uint8_t>(bmi088::Bmi088Error::kInt1IoCtrlError)},
-        {bmi088::kIntMapData,  bmi088::kAccInt1DrdyInt,
-         static_cast<uint8_t>(bmi088::Bmi088Error::kIntMapDataError)},
+        {bmi088::ACC_PWR_CTRL,  bmi088::ACC_ENABLE_ON,
+         static_cast<uint8_t>(bmi088::Bmi088Error::ACC_PWR_CTRL_ERROR)},
+        {bmi088::ACC_PWR_CONF,  bmi088::ACC_PWR_ACTIVE_MODE,
+         static_cast<uint8_t>(bmi088::Bmi088Error::ACC_PWR_CONF_ERROR)},
+        {bmi088::ACC_CONF,     static_cast<uint8_t>(bmi088::ACC_NORMAL | bmi088::ACC_800HZ | bmi088::ACC_CONF_MUST_SET),
+         static_cast<uint8_t>(bmi088::Bmi088Error::ACC_CONF_ERROR)},
+        {bmi088::ACC_RANGE,    bmi088::ACC_RANGE_6G,
+         static_cast<uint8_t>(bmi088::Bmi088Error::ACC_RANGE_ERROR)},
+        {bmi088::INT1_IO_CTRL,  static_cast<uint8_t>(bmi088::ACC_INT1_IO_ENABLE | bmi088::ACC_INT1_GPIO_PP | bmi088::ACC_INT1_GPIO_LOW),
+         static_cast<uint8_t>(bmi088::Bmi088Error::INT1_IO_CTRL_ERROR)},
+        {bmi088::INT_MAP_DATA,  bmi088::ACC_INT1_DRDY_INT,
+         static_cast<uint8_t>(bmi088::Bmi088Error::INT_MAP_DATA_ERROR)},
     };
 
     static constexpr RegEntry kGyroInitTable[] = {
-        {bmi088::kGyroRange,         bmi088::kGyro2000dps,
-         static_cast<uint8_t>(bmi088::Bmi088Error::kGyroRangeError)},
-        {bmi088::kGyroBandwidth,     static_cast<uint8_t>(bmi088::kGyro1000_116Hz | bmi088::kGyroBwMustSet),
-         static_cast<uint8_t>(bmi088::Bmi088Error::kGyroBandwidthError)},
-        {bmi088::kGyroLpm1,          bmi088::kGyroNormalMode,
-         static_cast<uint8_t>(bmi088::Bmi088Error::kGyroLpm1Error)},
-        {bmi088::kGyroCtrl,          bmi088::kDrdyOn,
-         static_cast<uint8_t>(bmi088::Bmi088Error::kGyroCtrlError)},
-        {bmi088::kGyroInt3Int4IoConf, static_cast<uint8_t>(bmi088::kGyroInt3GpioPP | bmi088::kGyroInt3GpioLow),
-         static_cast<uint8_t>(bmi088::Bmi088Error::kGyroInt3Int4IoConfError)},
-        {bmi088::kGyroInt3Int4IoMap, bmi088::kGyroDrdyIoInt3,
-         static_cast<uint8_t>(bmi088::Bmi088Error::kGyroInt3Int4IoMapError)},
+        {bmi088::GYRO_RANGE,         bmi088::GYRO_2000DPS,
+         static_cast<uint8_t>(bmi088::Bmi088Error::GYRO_RANGE_ERROR)},
+        {bmi088::GYRO_BANDWIDTH,     static_cast<uint8_t>(bmi088::GYRO_1000_116HZ | bmi088::GYRO_BW_MUST_SET),
+         static_cast<uint8_t>(bmi088::Bmi088Error::GYRO_BANDWIDTH_ERROR)},
+        {bmi088::GYRO_LPM1,          bmi088::GYRO_NORMAL_MODE,
+         static_cast<uint8_t>(bmi088::Bmi088Error::GYRO_LPM1_ERROR)},
+        {bmi088::GYRO_CTRL,          bmi088::DRDY_ON,
+         static_cast<uint8_t>(bmi088::Bmi088Error::GYRO_CTRL_ERROR)},
+        {bmi088::GYRO_INT3_INT4_IO_CONF, static_cast<uint8_t>(bmi088::GYRO_INT3_GPIO_PP | bmi088::GYRO_INT3_GPIO_LOW),
+         static_cast<uint8_t>(bmi088::Bmi088Error::GYRO_INT3_INT4_IO_CONF_ERROR)},
+        {bmi088::GYRO_INT3_INT4_IO_MAP, bmi088::GYRO_DRDY_IO_INT3,
+         static_cast<uint8_t>(bmi088::Bmi088Error::GYRO_INT3_INT4_IO_MAP_ERROR)},
     };
 
     // ---- SPI 读写 helpers ----
@@ -146,11 +146,11 @@ private:
     void OnGyroDataReady();
 
     // ---- SAL 实例 ----
-    sal::SPIInstance*  spi_acc_  = nullptr;
-    sal::SPIInstance*  spi_gyro_ = nullptr;
-    sal::GPIOInstance* acc_int_  = nullptr;
-    sal::GPIOInstance* gyro_int_ = nullptr;
-    sal::PWMInstance*  heat_pwm_ = nullptr;
+    sal::SpiInstance*  spi_acc_  = nullptr;
+    sal::SpiInstance*  spi_gyro_ = nullptr;
+    sal::GpioInstance* acc_int_  = nullptr;
+    sal::GpioInstance* gyro_int_ = nullptr;
+    sal::PwmInstance*  heat_pwm_ = nullptr;
 
     // ---- 温控 ----
     PidController heat_pid_;

@@ -5,24 +5,24 @@
 
 namespace sal {
 
-    class PWMInstance {
+    class PwmInstance {
     public:
-        using PWMPtr = PWMInstance*;
+        using PwmPtr = PwmInstance*;
 
-        struct PWMConfig {
+        struct PwmConfig {
             TIM_HandleTypeDef *handle  = nullptr;
             uint32_t           channel = 0;
         };
 
     private:
-        static std::vector<PWMPtr> instance_list_;
+        static std::vector<PwmPtr> instance_list_;
 
         TIM_HandleTypeDef *handle_;
         uint32_t           channel_;
 
     public:
-        PWMInstance(const PWMConfig &config);
-        ~PWMInstance() = default;
+        PwmInstance(const PwmConfig &config);
+        ~PwmInstance() = default;
 
         void Start();
         void Stop();

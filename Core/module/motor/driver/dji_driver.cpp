@@ -4,7 +4,7 @@
 #include <cstring>
 
 // ---- 静态成员定义 ----
-DjiDriver::TxGroup DjiDriver::tx_groups_[kGroupCount]{};
+DjiDriver::TxGroup DjiDriver::tx_groups_[GROUP_COUNT]{};
 
 // ---- 构造函数 ----
 DjiDriver::DjiDriver(const DjiDriverConfig& cfg)
@@ -16,26 +16,26 @@ DjiDriver::DjiDriver(const DjiDriverConfig& cfg)
     // 计算 RX ID
     uint32_t rx_id = 0;
     switch (motor_type_) {
-    case DjiMotorType::kM3508:
-    case DjiMotorType::kM2006:
+    case DjiMotorType::M3508:
+    case DjiMotorType::M2006:
         rx_id = 0x200 + cfg.motor_id;
         break;
-    case DjiMotorType::kGM6020:
+    case DjiMotorType::GM6020:
         rx_id = 0x204 + cfg.motor_id;
         break;
     }
 
     // 创建 SAL CAN 实例（生命周期由 SAL 静态 vector 管理）
     // tx_id 设为本组的 StdId，用于 FlushAll 时复用此实例发送
-    sal::CANInstance::CANConfig can_cfg{};
+    sal::CanInstance::CanConfig can_cfg{};
     can_cfg.handle = cfg.can_handle;
-    can_cfg.tx_id = kGroupStdIds[group_idx_];
+    can_cfg.tx_id = GROUP_STD_IDS[group_idx_];
     can_cfg.rx_id = rx_id;
     can_cfg.rx_cbk = [this](uint8_t /*len*/) {
         DecodeFeedback(can_->RxData());
     };
 
-    can_ = new sal::CANInstance(can_cfg);
+    can_ = new sal::CanInstance(can_cfg);
 
     // 注册为该组的 sender（第一个注册的电机的 CAN 实例）
     if (tx_groups_[group_idx_].sender == nullptr) {
@@ -57,8 +57,8 @@ void DjiDriver::SetupGrouping(const DjiDriverConfig& cfg) {
     uint8_t base = is_can2 ? 3 : 0;  // CAN2 组偏移
 
     switch (cfg.motor_type) {
-    case DjiMotorType::kM3508:
-    case DjiMotorType::kM2006:
+    case DjiMotorType::M3508:
+    case DjiMotorType::M2006:
         if (id >= 1 && id <= 4) {
             group_idx_ = base + 0;           // 0x200 组
             msg_offset_ = (id - 1) * 2;     // 帧内字节偏移
@@ -68,7 +68,7 @@ void DjiDriver::SetupGrouping(const DjiDriverConfig& cfg) {
         }
         break;
 
-    case DjiMotorType::kGM6020:
+    case DjiMotorType::GM6020:
         if (id >= 1 && id <= 4) {
             group_idx_ = base + 1;           // 0x1FF 组
             msg_offset_ = (id - 1) * 2;
@@ -90,14 +90,14 @@ void DjiDriver::SetOutput(float output) {
 
 // ---- 批量发送 ----
 void DjiDriver::FlushAll() {
-    for (uint8_t i = 0; i < kGroupCount; ++i) {
+    for (uint8_t i = 0; i < GROUP_COUNT; ++i) {
         auto& group = tx_groups_[i];
         if (!group.enabled || group.sender == nullptr)
             continue;
 
-        sal::can_msg_t msg{};
+        sal::CanMsg msg{};
         std::memcpy(msg.data, group.data, 8);
-        group.sender->CANTransmit(msg);
+        group.sender->CanTransmit(msg);
 
         // 清空缓冲区，防止电机失联后仍发送旧指令
         std::memset(group.data, 0, 8);
@@ -119,7 +119,7 @@ void DjiDriver::DecodeFeedback(const uint8_t* data) {
     m.speed_aps = LowPassFilter(
         m.speed_aps,
         RPM_2_ANGLE_PER_SEC * static_cast<float>(raw_speed),
-        kSpeedSmoothCoef);
+        SPEED_SMOOTH_COEF);
 
     // 电流 LPF
     int16_t raw_current = static_cast<int16_t>(
@@ -127,7 +127,7 @@ void DjiDriver::DecodeFeedback(const uint8_t* data) {
     m.real_current = static_cast<int16_t>(LowPassFilter(
         static_cast<float>(m.real_current),
         static_cast<float>(raw_current),
-        kCurrentSmoothCoef));
+        CURRENT_SMOOTH_COEF));
 
     m.temperature = data[6];
 

@@ -2,14 +2,14 @@
 
 namespace sal {
 
-    std::vector<GPIOInstance::GPIOPtr> GPIOInstance::instance_list_;
+    std::vector<GpioInstance::GpioPtr> GpioInstance::instance_list_;
 
     /**
      * @brief GPIO实例构造函数
      *
      * @param config GPIO配置结构体
      */
-    GPIOInstance::GPIOInstance(const GPIOConfig &config)
+    GpioInstance::GpioInstance(const GpioConfig &config)
         : port_(config.port),
           pin_(config.pin),
           exti_cbk_(config.exti_cbk)
@@ -22,27 +22,27 @@ namespace sal {
         instance_list_.push_back(this);
     }
 
-    void GPIOInstance::Set()
+    void GpioInstance::Set()
     {
         HAL_GPIO_WritePin(port_, pin_, GPIO_PIN_SET);
     }
 
-    void GPIOInstance::Reset()
+    void GpioInstance::Reset()
     {
         HAL_GPIO_WritePin(port_, pin_, GPIO_PIN_RESET);
     }
 
-    void GPIOInstance::Toggle()
+    void GpioInstance::Toggle()
     {
         HAL_GPIO_TogglePin(port_, pin_);
     }
 
-    GPIO_PinState GPIOInstance::Read()
+    GPIO_PinState GpioInstance::Read()
     {
         return HAL_GPIO_ReadPin(port_, pin_);
     }
 
-    void GPIOInstance::Write(GPIO_PinState state)
+    void GpioInstance::Write(GPIO_PinState state)
     {
         HAL_GPIO_WritePin(port_, pin_, state);
     }
@@ -54,7 +54,7 @@ namespace sal {
      */
     void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
     {
-        for (auto &ins : GPIOInstance::instance_list_)
+        for (auto &ins : GpioInstance::instance_list_)
         {
             if (ins->pin_ == GPIO_Pin && ins->exti_cbk_ != nullptr)
             {

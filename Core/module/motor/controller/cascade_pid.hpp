@@ -7,10 +7,10 @@
 
 /// 级联 PID 闭环模式（位掩码）
 namespace loop_mode {
-inline constexpr uint8_t kOpen       = 0b000;
-inline constexpr uint8_t kSpeed      = 0b010;
-inline constexpr uint8_t kAngle      = 0b100;
-inline constexpr uint8_t kAngleSpeed = 0b110;  // angle → speed 级联
+inline constexpr uint8_t OPEN        = 0b000;
+inline constexpr uint8_t SPEED       = 0b010;
+inline constexpr uint8_t ANGLE       = 0b100;
+inline constexpr uint8_t ANGLE_SPEED = 0b110;  // angle → speed 级联
 } // namespace loop_mode
 
 /// 外部反馈覆盖（IMU 角度/角速度等）
@@ -23,7 +23,7 @@ struct FeedbackOverride {
 struct CascadePidConfig {
     PidConfig speed_pid{};
     PidConfig angle_pid{};
-    uint8_t loop_mode = loop_mode::kSpeed;
+    uint8_t loop_mode = loop_mode::SPEED;
     bool reverse = false;
     FeedbackOverride feedback_override{};
 };
@@ -64,7 +64,7 @@ public:
         float output = ref;
 
         // 角度环
-        if (loop_mode_ & loop_mode::kAngle) {
+        if (loop_mode_ & loop_mode::ANGLE) {
             float angle_fb = (fb_override_.angle_fb != nullptr)
                 ? *fb_override_.angle_fb
                 : measure.total_angle;
@@ -72,7 +72,7 @@ public:
         }
 
         // 速度环
-        if (loop_mode_ & loop_mode::kSpeed) {
+        if (loop_mode_ & loop_mode::SPEED) {
             float speed_fb = (fb_override_.speed_fb != nullptr)
                 ? *fb_override_.speed_fb
                 : measure.speed_aps;
@@ -93,7 +93,7 @@ public:
 private:
     PidController speed_pid_{};
     PidController angle_pid_{};
-    uint8_t loop_mode_ = loop_mode::kSpeed;
+    uint8_t loop_mode_ = loop_mode::SPEED;
     bool reverse_ = false;
     FeedbackOverride fb_override_{};
 };
