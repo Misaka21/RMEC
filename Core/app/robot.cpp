@@ -4,6 +4,7 @@
 #include "robot_def.hpp"
 #include "robot_topics.hpp"
 #include "ins_task.hpp"
+#include "remote_task.hpp"
 
 // Module 层 (编译验证)
 #include "motor.hpp"
@@ -16,9 +17,12 @@
 #include "quaternion_ekf.hpp"
 #include "ins_data.hpp"
 #include "ins.hpp"
+#include "remote.hpp"
+#include "dt7_protocol.hpp"
 
 // 编译验证 static_assert
 static_assert(std::is_trivially_copyable_v<InsData>);
+static_assert(std::is_trivially_copyable_v<remote::Dt7Data>);
 static_assert(std::is_trivially_copyable_v<QuaternionEkfOutput>);
 static_assert(sizeof(QuaternionEkf) > 0);
 static_assert(sizeof(Ins) > 0);
@@ -27,6 +31,7 @@ static_assert(sizeof(Rls2) > 0);
 
 using DjiCascadeMotor = Motor<DjiDriver, CascadePid>;
 using DjiMitMotor     = Motor<DjiDriver, MitPassthrough>;
+using Dt7Remote       = remote::Remote<remote::Dt7Protocol>;
 
 // ============================================================
 // RobotInit — C++ 侧唯一入口, 由 main.c 在 osKernelStart() 前调用
@@ -34,5 +39,6 @@ using DjiMitMotor     = Motor<DjiDriver, MitPassthrough>;
 
 extern "C" void RobotInit() {
     InsTaskStart();
-    // 未来: RobotTaskStart(), DaemonTaskStart(), UiTaskStart() ...
+    RemoteInit();
+    // 未来: CmdTaskStart(), DaemonTaskStart(), UiTaskStart() ...
 }

@@ -50,6 +50,10 @@ inline constexpr float IMU_HEAT_TARGET_TEMP    = 40.0f;
 inline constexpr float IMU_PRE_GYRO_OFFSET[3]  = {0.000994f, -0.004877f, 0.003771f};
 inline constexpr float IMU_PRE_G_NORM           = 9.8909f;
 
+// ======================== 遥控器 ========================
+
+#define RC_UART_HANDLE      huart3
+
 // ======================== 云台 ========================
 
 inline constexpr uint16_t YAW_CHASSIS_ALIGN_ECD     = 2711;   // TODO: 实测标定
