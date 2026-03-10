@@ -4,6 +4,14 @@
 
 #include <chrono>
 
+// 静态成员定义
+DWTInstance::DWT_time_t DWTInstance::dwt_time_{};
+uint32_t DWTInstance::CPU_FREQ_Hz    = 0;
+uint32_t DWTInstance::CPU_FREQ_Hz_ms = 0;
+uint32_t DWTInstance::CPU_FREQ_Hz_us = 0;
+uint32_t DWTInstance::cyc_round_cnt_ = 0;
+uint64_t DWTInstance::CYCCNT64       = 0;
+
 void DWTInstance::DWT_CNT_Update(void)
 {
     static bit_locker bit_lock;
@@ -87,7 +95,7 @@ void DWTInstance::DWTDelay(float Delay)
         ;
 }
 
-DWTInstance::DWTInstance()
+DWTInstance::DWTInstance() : dwt_cnt_(0)
 {
 }
 

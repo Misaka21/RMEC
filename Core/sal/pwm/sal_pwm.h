@@ -1,14 +1,13 @@
 #pragma once
 #include "tim.h"
 #include "xTools.hpp"
-#include <memory>
 #include <vector>
 
 namespace sal {
 
     class PWMInstance {
     public:
-        using PWMPtr = std::shared_ptr<PWMInstance>;
+        using PWMPtr = PWMInstance*;
 
         struct PWMConfig {
             TIM_HandleTypeDef *handle  = nullptr;

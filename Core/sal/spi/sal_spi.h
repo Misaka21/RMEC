@@ -1,7 +1,6 @@
 #pragma once
 #include "spi.h"
 #include "xTools.hpp"
-#include <memory>
 #include <functional>
 #include <vector>
 
@@ -16,7 +15,7 @@ namespace sal {
         friend void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *);
 
     public:
-        using SPIPtr        = std::shared_ptr<SPIInstance>;
+        using SPIPtr        = SPIInstance*;
         using SPITxCallback = std::function<void()>;
         using SPIRxCallback = std::function<void()>;
 

@@ -27,10 +27,9 @@ set(MCU_FLAGS -mcpu=cortex-m4 -mthumb -mthumb-interwork -mfloat-abi=hard -mfpu=f
 set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/ToolChain/STM32F407IGHX_FLASH.ld") # 指定链接脚本
 set(CMSISCORE "${CMAKE_SOURCE_DIR}/Drivers/CMSIS")
 set(DSP_NAME "libCMSISDSP.a") # 指定DSP库名称
-link_directories(${CMAKE_SOURCE_DIR}/ExtLibs/DSP/Lib)
 
 # 构建选项
-option(BUILD_DSP ON) # 是否编译DSP库,若要定制须修改DSP/Source/CMakeLists.txt
+option(BUILD_DSP "Build CMSIS-DSP library from source" ON)
 
 if(BUILD_DSP)
     add_subdirectory(${CMAKE_SOURCE_DIR}/ExtLibs/DSP/Source)
@@ -106,9 +105,8 @@ add_executable(${PROJECT_NAME}.elf  ${SOURCES} ${ASM_SOURCES} ${LINKER_SCRIPT})
 
 if(BUILD_DSP)
     add_dependencies(${PROJECT_NAME}.elf CMSISDSP) # build DSP lib
+    target_link_libraries(${PROJECT_NAME}.elf CMSISDSP) # link DSP lib
 endif()
-
-target_link_libraries(${PROJECT_NAME}.elf ${DSP_NAME}) # link DSP lib
 
 add_custom_command(
     TARGET ${PROJECT_NAME}.elf POST_BUILD

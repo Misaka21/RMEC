@@ -36,7 +36,7 @@ namespace sal
     {
         // 简化类型定义
     public:
-        using CANPtr = std::shared_ptr<CANInstance>;
+        using CANPtr = CANInstance*;
         using FIFOPtr = std::shared_ptr<loop_queue<can_msg_t>>;
         using CANRxCallback = std::function<void(uint8_t)>; // 参数为这一包的长度
         using CANTxCallback = std::function<void()>;

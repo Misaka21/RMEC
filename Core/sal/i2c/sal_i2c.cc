@@ -24,7 +24,7 @@ namespace sal {
         if (handle_->Instance == I2C3 && xfer_type_ == I2C_XFER_DMA)
             DEBUG_DEADLOCK("[sal::I2C] I2C3 does not support DMA");
 
-        instance_list_.emplace_back(std::shared_ptr<I2CInstance>(this));
+        instance_list_.push_back(this);
     }
 
     /**

@@ -1,5 +1,4 @@
 #include "sal_usart.h"
-#include <memory>
 #include <cstring>
 
 namespace sal
@@ -34,7 +33,7 @@ namespace sal
         tx_cbk_ = config.tx_cbk;
 
         // 将实例加入列表
-        instance_list_.emplace_back(std::shared_ptr<UARTInstance>(this));
+        instance_list_.push_back(this);
         if (instance_list_.size() > UART_MX_INS_NUM)
             DEBUG_DEADLOCK("[sal::UARTInstance] you exceed the max instance num");
     }

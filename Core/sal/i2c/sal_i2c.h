@@ -1,7 +1,6 @@
 #pragma once
 #include "i2c.h"
 #include "xTools.hpp"
-#include <memory>
 #include <functional>
 #include <vector>
 
@@ -17,7 +16,7 @@ namespace sal {
         friend void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *);
 
     public:
-        using I2CPtr        = std::shared_ptr<I2CInstance>;
+        using I2CPtr        = I2CInstance*;
         using I2CTxCallback = std::function<void()>;
         using I2CRxCallback = std::function<void()>;
 

@@ -10,6 +10,8 @@ namespace sal
     // 为静态成员变量分配内存
     std::vector<CANInstance::CANPtr> CANInstance::instance_[CAN_DEV_NUM];
     CANInstance::FIFOPtr CANInstance::fifo_ptr_[CAN_DEV_NUM];
+    uint8_t CANInstance::can1_filter_idx_ = 0;
+    uint8_t CANInstance::can2_filter_idx_ = 14;
 
     CANInstance::CANInstance(const CANConfig &config)
     {
@@ -45,7 +47,7 @@ namespace sal
 
         uint8_t can_dev = handle_->Instance == CAN1 ? 0 : 1; // 用于区分CAN1和CAN2
         // 加入列表,绑定fifo
-        instance_[can_dev].push_back(std::shared_ptr<CANInstance>(this));
+        instance_[can_dev].push_back(this);
         fifo_bind_ = fifo_ptr_[can_dev];
     }
 

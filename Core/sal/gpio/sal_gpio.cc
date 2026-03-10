@@ -19,7 +19,7 @@ namespace sal {
         if (pin_ == 0)
             DEBUG_DEADLOCK("[sal::GPIO] pin is 0");
 
-        instance_list_.emplace_back(std::shared_ptr<GPIOInstance>(this));
+        instance_list_.push_back(this);
     }
 
     void GPIOInstance::Set()

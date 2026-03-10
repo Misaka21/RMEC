@@ -5,7 +5,6 @@
 #include "xTools.hpp"
 #include "xStruct.hpp"
 // STL
-#include <memory>
 #include <functional>
 #include <vector>
 
@@ -55,7 +54,7 @@ namespace sal
         // 发送回调函数,没有返回值,若需要可自行修改
         using UARTTransCallback = std::function<void()>;
         // 智能指针wrapper
-        using UARTPtr = std::shared_ptr<UARTInstance>;
+        using UARTPtr = UARTInstance*;
 
         /* 初始化配置结构体,已经给定默认参数 */
         struct UARTConfig

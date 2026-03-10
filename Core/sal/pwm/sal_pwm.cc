@@ -16,7 +16,7 @@ namespace sal {
         if (handle_ == nullptr)
             DEBUG_DEADLOCK("[sal::PWM] handle is nullptr");
 
-        instance_list_.emplace_back(std::shared_ptr<PWMInstance>(this));
+        instance_list_.push_back(this);
     }
 
     /**

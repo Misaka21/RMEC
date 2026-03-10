@@ -57,6 +57,8 @@ public:
 
     T pop()
     {
+        if (size_ == 0)
+            return T{};
         front_ = (front_ + 1) % max_size_;
         --size_;
         return data_[front_ == 0 ? max_size_ - 1 : front_ - 1]; // 避免保存临时变量
@@ -74,12 +76,12 @@ public:
 
     T &back()
     {
-        return data_[rear_];
+        return data_[rear_ == 0 ? max_size_ - 1 : rear_ - 1];
     }
 
     void back(T &data)
     {
-        data = data_[rear_];
+        data = data_[rear_ == 0 ? max_size_ - 1 : rear_ - 1];
     }
 
     void popout()
@@ -100,7 +102,7 @@ public:
         return size_ == 0;
     }
 
-    bool size() const
+    uint16_t size() const
     {
         return size_;
     }

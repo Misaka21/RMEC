@@ -1,7 +1,6 @@
 #pragma once
 #include "main.h"
 #include "xTools.hpp"
-#include <memory>
 #include <functional>
 #include <vector>
 
@@ -11,7 +10,7 @@ namespace sal {
         friend void HAL_GPIO_EXTI_Callback(uint16_t);
 
     public:
-        using GPIOPtr          = std::shared_ptr<GPIOInstance>;
+        using GPIOPtr          = GPIOInstance*;
         using GPIOExtiCallback = std::function<void()>;
 
         struct GPIOConfig {
