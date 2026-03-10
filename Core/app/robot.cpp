@@ -2,7 +2,6 @@
 
 // App 层
 #include "robot_def.hpp"
-#include "robot_types.hpp"
 #include "robot_topics.hpp"
 #include "ins_task.hpp"
 
