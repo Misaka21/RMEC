@@ -159,6 +159,7 @@ namespace sal
         case UartRxType::DMA_NUM:
             HAL_UART_Receive_DMA(handle_, rx_buff_, rx_size_);
             __HAL_DMA_DISABLE_IT(handle_->hdmarx, DMA_IT_HT);
+            break;
         case UartRxType::IT_NUM:
             HAL_UART_Receive_IT(handle_, rx_buff_, rx_size_);
             break;
@@ -248,3 +249,19 @@ namespace sal
         }
     }
 } // !sal
+
+// extern "C" 转发: 覆盖 HAL __weak 符号, 转发到 namespace sal 内的实现
+extern "C" {
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) {
+    sal::HAL_UARTEx_RxEventCallback(huart, Size);
+}
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
+    sal::HAL_UART_RxCpltCallback(huart);
+}
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
+    sal::HAL_UART_TxCpltCallback(huart);
+}
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+    sal::HAL_UART_ErrorCallback(huart);
+}
+}
