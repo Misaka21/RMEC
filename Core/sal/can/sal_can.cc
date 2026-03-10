@@ -146,20 +146,6 @@ namespace sal
         // @todo 可以做条件编译小优化,如果只有CAN1直接调用
     }
 
-    // 三个发送完成回调函数,用于处理发送完成后的事情,统一调用CanTxFinishCallback()
-    void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan)
-    {
-        sal::CanInstance::CanTxFinishCallback(hcan);
-    }
-    void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan)
-    {
-        sal::CanInstance::CanTxFinishCallback(hcan);
-    }
-    void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan)
-    {
-        sal::CanInstance::CanTxFinishCallback(hcan);
-    }
-
     /**
      * @brief rxfifo回调函数,用于处理接收到的消息
      *
@@ -189,14 +175,23 @@ namespace sal
         }
     }
 
-    // 下面两个函数是HAL库的回调函数的重载,用于处理接收到的消息
-    void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
-    {
-        CanInstance::CanFifoxCallback(hcan, CAN_RX_FIFO0); // 调用我们自己写的函数来处理消息
-    }
+} // !sal
 
-    void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan)
-    {
-        CanInstance::CanFifoxCallback(hcan, CAN_RX_FIFO1); // 调用我们自己写的函数来处理消息
-    }
+// extern "C" 转发: 覆盖 HAL __weak 符号, 转发到 namespace sal 内的实现
+extern "C" {
+void HAL_CAN_TxMailbox0CompleteCallback(CAN_HandleTypeDef *hcan) {
+    sal::CanInstance::CanTxFinishCallback(hcan);
+}
+void HAL_CAN_TxMailbox1CompleteCallback(CAN_HandleTypeDef *hcan) {
+    sal::CanInstance::CanTxFinishCallback(hcan);
+}
+void HAL_CAN_TxMailbox2CompleteCallback(CAN_HandleTypeDef *hcan) {
+    sal::CanInstance::CanTxFinishCallback(hcan);
+}
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan) {
+    sal::CanInstance::CanFifoxCallback(hcan, CAN_RX_FIFO0);
+}
+void HAL_CAN_RxFifo1MsgPendingCallback(CAN_HandleTypeDef *hcan) {
+    sal::CanInstance::CanFifoxCallback(hcan, CAN_RX_FIFO1);
+}
 }
