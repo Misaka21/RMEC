@@ -1,0 +1,61 @@
+---
+  Checks:          '-*,
+                    bugprone-argument-comment,
+                    bugprone-assert-side-effect,
+                    bugprone-dangling-handle,
+                    bugprone-inaccurate-erase,
+                    bugprone-string-constructor,
+                    bugprone-string-integer-assignment,
+                    bugprone-undefined-memory-manipulation,
+                    bugprone-unused-raii,
+                    bugprone-use-after-move,
+                    google-build-explicit-make-pair,
+                    google-explicit-constructor,
+                    misc-misleading-identifier,
+                    misc-homoglyph,
+                    modernize-avoid-bind,
+                    modernize-concat-nested-namespaces,
+                    modernize-loop-convert,
+                    modernize-make-shared,
+                    modernize-make-unique,
+                    modernize-redundant-void-arg,
+                    modernize-replace-random-shuffle,
+                    modernize-shrink-to-fit,
+                    modernize-use-bool-literals,
+                    modernize-use-default-member-init,
+                    modernize-use-emplace,
+                    modernize-use-equals-default,
+                    modernize-use-equals-delete,
+                    modernize-use-noexcept,
+                    modernize-use-nullptr,
+                    modernize-use-override,
+                    modernize-use-transparent-functors,
+                    readability-braces-around-statements,
+                    readability-identifier-naming,
+                    readability-implicit-bool-conversion,
+                    readability-qualified-auto,
+                    readability-redundant-member-init'
+  CheckOptions:
+    - key:          bugprone-assert-side-effect.AssertMacros
+      value:        assert,DCHECK
+    - key:          modernize-use-default-member-init.UseAssignment
+      value:        1
+    - key:          modernize-use-transparent-functors.SafeMode
+      value:        1
+    - key:          modernize-use-emplace.IgnoreImplicitConstructors
+      value:        1
+    # ---------- 命名规范 (与 CLAUDE.md 一致) ----------
+    - { key: readability-identifier-naming.ClassCase,             value: CamelCase  }
+    - { key: readability-identifier-naming.StructCase,            value: CamelCase  }
+    - { key: readability-identifier-naming.EnumCase,              value: CamelCase  }
+    - { key: readability-identifier-naming.EnumConstantCase,      value: UPPER_CASE }
+    - { key: readability-identifier-naming.NamespaceCase,         value: lower_case }
+    - { key: readability-identifier-naming.ClassMemberCase,       value: lower_case }
+    - { key: readability-identifier-naming.ClassMemberSuffix,     value: '_'        }
+    - { key: readability-identifier-naming.FunctionCase,          value: CamelCase  }
+    - { key: readability-identifier-naming.VariableCase,          value: lower_case }
+    - { key: readability-identifier-naming.ParameterCase,         value: lower_case }
+    - { key: readability-identifier-naming.MacroDefinitionCase,   value: UPPER_CASE }
+    - { key: readability-identifier-naming.GlobalConstantCase,    value: UPPER_CASE }
+    - { key: readability-identifier-naming.ConstexprVariableCase, value: UPPER_CASE }
+...
