@@ -10,7 +10,7 @@
 | 任务 | 手动 `osThreadDef` + trampoline | `TaskManager` 封装 |
 | 电机 | 全局数组 + 函数指针 | `Motor<Driver, Controller>` 模板组合 |
 | 模式 | `typedef enum` (无作用域) | `enum class` (强类型) |
-| 配置 | `robot_def.h` 包含 ins_task.h 等 | 分层: robot_def / robot_types / robot_topics |
+| 配置 | `robot_def.h` 包含 ins_task.h 等 | 分层: robot_def (常量) / robot_topics (类型+Topic) |
 | IMU | `ins_task.c` God Object | Bmi088(驱动) + Ins(算法) + ins_task(编排) |
 | 多板 | `#ifdef ONE_BOARD` 条件编译 | 同, 但 Topic 可透明替换为 CAN 传输 |
 
@@ -19,68 +19,152 @@
 ```
 SRP  — 每个 app 文件只做一件事 (CMD=指挥, Chassis=运动学, Gimbal=云台控制)
 DIP  — 子系统不依赖彼此, 只依赖 Topic<T> 数据结构
-ISP  — robot_types.hpp 零 heavy 依赖, 任何 app 都能 include 而不引入 ARM DSP
+ISP  — robot_topics.hpp / ins_data.hpp 零 heavy 依赖, 任何 app 都能 include 而不引入 ARM DSP
 OCP  — 换底盘类型只改 chassis.cpp, 不动 CMD/Gimbal/Shoot
 ```
 
 ## 2. 文件结构
 
+### 2.1 basic_framework 的 task 分析
+
+basic_framework 的 task 设计本身很好 (职责单一, 频率合理), 但 **task 放在了 module 层, 这是不对的**:
+
+| task 函数 | basic_framework 位置 | 问题 |
+|---|---|---|
+| `INS_Init/Task` | `modules/imu/ins_task.c` | 引用 `robot_def.h` 硬件引脚, 不可复用 |
+| `MotorControlTask` | `modules/motor/motor_task.c` | 遍历全局电机数组, 隐含 app 知识 |
+| `DaemonTask` | `modules/daemon/daemon.c` | 组件本身可复用, 但 task 循环不应在 module |
+| `BuzzerTask` | `modules/alarm/buzzer.c` | 同上 |
+| `UITask` | `modules/referee/referee_task.c` | 引用 `robot_def.h` 中的模式枚举 |
+| `VisionSend` | `modules/master_machine/` | 引用 `robot_def.h` 中的配置 |
+
+**问题本质**: 这些 task 函数引用了 `robot_def.h` 的硬件配置和机器人参数,
+换车时需要修改, 违反了 "module 层换车不改" 的原则。
+
+**powerful_framework 的改进**: Task 编排全部放 app 层, module 层只提供纯组件类。
+
+### 2.2 powerful_framework 的文件结构
+
 ```
-Core/app/
-├── robot_def.hpp           # 板型宏 + 机械常量 (纯 #define, 零 include)
-├── robot_types.hpp         # enum class 模式 + 命令/反馈结构体
-├── robot_topics.hpp        # 所有 inline Topic<T> 实例 (pub/sub 枢纽)
-├── robot.cpp               # RobotInit() + 编译验证 static_assert
+Core/module/                        ← 模块层 (纯组件, 换车不改)
 │
-├── ins_task.hpp/.cpp       # [已实现] 1 kHz IMU + EKF → Topic<InsData>
+│   不创建 FreeRTOS 任务
+│   不引用 robot_def.hpp
+│   只提供 class + Init()/Update()/Tick() 方法
 │
-├── robot_task.hpp          # RobotTaskStart() 声明
-├── robot_task.cpp          # 200 Hz 主任务: 顺序调用 CMD→Gimbal→Shoot→Chassis
+├── algorithm/
+│   ├── pid_controller.hpp/.cpp     # [已实现] PID 控制器
+│   ├── ahrs_math.hpp               # [已实现] 向量/坐标变换
+│   ├── quaternion_ekf.hpp/.cpp     # [已实现] 四元数 EKF
+│   └── power_limiter.hpp/.cpp      # [已实现] 功率限制 (RLS)
 │
-├── cmd/
-│   ├── robot_cmd.hpp       # RobotCmdInit(), RobotCmdTask()
-│   └── robot_cmd.cpp       # 遥控器/键鼠输入 → 模式决策 → 发布命令
+├── imu/
+│   ├── bmi088_reg.hpp              # [已实现] 寄存器定义
+│   ├── bmi088.hpp/.cpp             # [已实现] BMI088 驱动 (接收 Bmi088Config)
+│   ├── ins_data.hpp                # [已实现] InsData 轻量结构体
+│   └── ins.hpp                     # [已实现] Ins 姿态解算
 │
-├── chassis/
-│   ├── chassis.hpp         # ChassisInit(), ChassisTask()
-│   └── chassis.cpp         # 麦轮运动学 + 功率限制
+├── motor/
+│   ├── motor.hpp                   # [已实现] Motor<D,C> 模板
+│   ├── motor_measure.hpp           # [已实现] 编码器多圈计数
+│   ├── driver/dji_driver.hpp/.cpp  # [已实现] DJI 电机驱动
+│   ├── controller/cascade_pid.hpp  # [已实现] 串级 PID
+│   └── controller/mit_passthrough.hpp # [已实现] MIT 直通
 │
-├── gimbal/
-│   ├── gimbal.hpp          # GimbalInit(), GimbalTask()
-│   └── gimbal.cpp          # Yaw/Pitch 双轴 IMU 闭环
+├── remote/                         # 遥控器解码 (接收 Config, 提供 Data())
+│   └── remote.hpp/.cpp
 │
-└── shoot/
-    ├── shoot.hpp           # ShootInit(), ShootTask()
-    └── shoot.cpp           # 摩擦轮 + 拨弹盘
+├── referee/                        # 裁判系统协议解析 + UI 绘制 API
+│   └── referee.hpp/.cpp
+│
+├── daemon/                         # 离线检测 (注册/喂狗/查询, Tick() 递减)
+│   └── daemon.hpp/.cpp
+│
+├── alarm/                          # 蜂鸣器 (优先级报警, Tick() 扫描)
+│   └── buzzer.hpp/.cpp
+│
+├── vision/                         # 视觉协议 (编解码, Send/Recv)
+│   └── vision.hpp/.cpp
+│
+├── super_cap/                      # 超级电容通信
+│   └── super_cap.hpp/.cpp
+│
+├── topic.hpp                       # [已实现] SeqLock 发布订阅
+└── general_def.hpp                 # [已实现] 数学常量 + 工具函数
+
+Core/app/                           ← 应用层 (编排 + 机器人逻辑)
+│
+│   每个 *_task/ 文件夹 = 一个独立 FreeRTOS 线程
+│   子系统 (cmd/chassis/gimbal/shoot) 不是独立线程, 收在 robot_task/ 内
+│
+├── robot_def.hpp                   # 板型宏 + 硬件引脚 + 机械常量
+├── robot_topics.hpp                # enum class + 命令/反馈结构体 + Topic 实例
+├── robot.cpp                       # RobotInit() 入口 (启动所有 *_task)
+│
+├── ins_task/                       # 独立 TaskManager, 1 kHz, Realtime
+│   ├── ins_task.hpp                # [已实现]
+│   └── ins_task.cpp                # 硬件配置 → Bmi088 → Ins → Topic → 云台PID → 温控
+│
+├── robot_task/                     # 独立 TaskManager, 200 Hz, Normal
+│   ├── robot_task.hpp
+│   ├── robot_task.cpp              # 顺序调用 ↓ 四个子系统 + DjiDriver::FlushAll()
+│   ├── cmd.hpp / cmd.cpp           # 遥控器/键鼠 → 模式决策 → 发布命令
+│   ├── chassis.hpp / chassis.cpp   # 麦轮运动学 + 功率限制
+│   ├── gimbal.hpp / gimbal.cpp     # Yaw/Pitch IMU 闭环
+│   └── shoot.hpp / shoot.cpp       # 摩擦轮 + 拨弹盘
+│
+├── daemon_task/                    # 独立 TaskManager, 100 Hz, Normal
+│   ├── daemon_task.hpp
+│   └── daemon_task.cpp             # Daemon::Tick() + Buzzer::Tick()
+│
+└── ui_task/                        # 独立 TaskManager, ~1 Hz, BelowNormal
+    ├── ui_task.hpp
+    └── ui_task.cpp                 # 裁判系统 UI 绘制
 ```
+
+### 2.3 职责边界
+
+| | 模块层 (`Core/module/`) | 应用层 (`Core/app/`) |
+|---|---|---|
+| **提供** | 纯组件类: `Bmi088`, `Ins`, `Daemon`, `Buzzer`, `Remote` 等 | Task 编排 + 机器人逻辑 |
+| **接口** | `Init(config)`, `Update()`, `Tick()`, `Data()` | `TaskManager` lambda 调用 module 方法 |
+| **依赖** | 只依赖 SAL 层 + 其他 module | 依赖 module + `robot_def.hpp` |
+| **FreeRTOS** | **不创建任务**, 不调用 `osDelay` | 创建 TaskManager, 控制频率和优先级 |
+| **robot_def** | **不引用** | 引用, 填入硬件配置 |
+| **换车** | **不改** | 改引脚、参数、子系统逻辑 |
 
 ## 3. 分层依赖图
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      App 层                              │
-│                                                          │
-│  robot_def.hpp ← robot_types.hpp ← robot_topics.hpp     │
-│       (常量)        (枚举+结构体)      (Topic 实例)        │
-│                         │                  │             │
-│  ┌──────┐  ┌────────┐  │  ┌─────────┐  ┌──────┐        │
-│  │ CMD  │  │Chassis │  │  │ Gimbal  │  │Shoot │        │
-│  └──┬───┘  └───┬────┘  │  └────┬────┘  └──┬───┘        │
-│     │          │        │       │           │            │
-│     └──────────┴────────┴───────┴───────────┘            │
-│              全部通过 Topic<T> 通信                        │
-│              零 #include 其他 app 头文件                   │
-├──────────────────────────────────────────────────────────┤
-│                     Module 层                             │
-│  Motor<D,C>   PID   Ins   Bmi088   PowerLimiter          │
-├──────────────────────────────────────────────────────────┤
-│                      SAL 层                               │
-│  CAN  SPI  UART  GPIO  PWM  DWT  TaskManager  Topic      │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                      App 层 (编排 + 机器人逻辑)                    │
+│                                                                   │
+│  robot_def.hpp ←─── robot_topics.hpp                              │
+│    (硬件常量)        (枚举+结构体+Topic)                            │
+│                                                                   │
+│  ins_task/ (1kHz)   daemon_task/ (100Hz)   ui_task/ (~1Hz)        │
+│                                                                   │
+│  robot_task/ (200Hz)                                              │
+│    ├── cmd ──→ 发布命令                                            │
+│    ├── chassis ──→ 麦轮运动学                                      │
+│    ├── gimbal ──→ (PID 在 ins_task 中 1kHz)                       │
+│    ├── shoot ──→ 摩擦轮/拨弹                                       │
+│    └── FlushAll()                                                 │
+│                                                                   │
+│  所有子系统通过 Topic<T> 通信, 零直接依赖                            │
+├──────────────────────────────────────────────────────────────────┤
+│                Module 层 (纯组件, 无 task, 无 robot_def)           │
+│                                                                   │
+│  算法:   PID  QuaternionEkf  Ins  ahrs_math  PowerLimiter        │
+│  驱动:   Bmi088  Motor<D,C>  DjiDriver                           │
+│  通信:   Remote  Referee  Vision  SuperCap                        │
+│  服务:   Daemon  Buzzer                                           │
+│  基础:   Topic<T>  general_def                                    │
+├──────────────────────────────────────────────────────────────────┤
+│                         SAL 层                                    │
+│  CAN  SPI  UART  GPIO  PWM  DWT  TaskManager  Flash  Log  USB   │
+└──────────────────────────────────────────────────────────────────┘
 ```
-
-**关键**: 没有任何一条从 Chassis→Gimbal 或 CMD→Chassis 的直接依赖。
-所有 app 只依赖 `robot_types.hpp` + `robot_topics.hpp` + 自身需要的 Module 层头文件。
 
 ## 4. 启动流程
 
@@ -120,21 +204,53 @@ robot.cpp (C++):
 
 ## 5. 任务调度
 
+### 5.1 与 basic_framework 任务对比
+
+basic_framework 有 5 个独立 FreeRTOS 任务:
+
+| basic_framework 任务 | 频率 | 内容 | powerful_framework 对应 |
+|---|---|---|---|
+| `ins_task` (1 kHz) | AboveNormal | BMI088 + EKF + VisionSend() | `ins_task` (已实现) |
+| `motor_task` (1 kHz) | Normal | 所有电机 PID 计算 + CAN 发送 | **不单独建任务** (见下文) |
+| `robot_task` (200 Hz) | Normal | CMD 设定目标 + Chassis/Gimbal/Shoot 逻辑 | `robot_task` |
+| `daemon_task` (100 Hz) | Normal | 离线检测 (Daemon) + BuzzerTask() | `daemon_task` |
+| `ui_task` (~1 Hz) | Normal | 裁判系统 UI 绘制 | `ui_task` |
+
+### 5.2 为什么不单独建 motor_task?
+
+basic_framework 的设计:
+- `robot_task` (200 Hz): 设定电机目标值 (setpoint)
+- `motor_task` (1 kHz): 遍历全局电机数组, 计算 PID, 发送 CAN
+
+这依赖于**全局电机注册表** (`DJIMotorInstance` 静态数组), 所有电机集中管理。
+
+powerful_framework 的设计:
+- `Motor<D,C>` 是模板, 电机由各子系统**分散持有** (chassis 持有 4 个, gimbal 持有 2 个)
+- 没有全局电机注册表, 无法集中遍历
+- `Motor::Update()` 同时完成 PID 计算 + CAN 发送
+
+因此电机 PID 频率 = 调用它的任务频率。具体策略:
+
+| 电机 | 所在任务 | PID 频率 | 说明 |
+|---|---|---|---|
+| 底盘 M3508 ×4 | robot_task | 200 Hz | 底盘电机对频率不敏感 |
+| 摩擦轮 M3508 ×2 | robot_task | 200 Hz | 速度环, 200 Hz 够用 |
+| 拨弹盘 M2006 ×1 | robot_task | 200 Hz | 角度环, 200 Hz 够用 |
+| **云台 GM6020 ×2** | **ins_task** | **1 kHz** | 云台需要高频 PID, 与 IMU 同步 |
+
+> 云台电机放在 ins_task 中, 在 `ins->Update()` 之后立即执行 PID,
+> 读到的 IMU 数据零延迟, 控制效果最优。
+
+### 5.3 任务总表
+
 | 任务 | 频率 | 优先级 | 栈 (words) | 职责 |
 |---|---|---|---|---|
-| `ins_task` | 1 kHz | Realtime | 512 | BMI088→EKF→InsData→Topic |
-| `robot_task` | 200 Hz | Normal | 512 | CMD + Gimbal + Shoot + Chassis (顺序执行) |
-| `daemon_task` | 100 Hz | Normal | 128 | 看门狗 + 蜂鸣器 + 离线检测 |
+| `ins_task` | 1 kHz | Realtime | 512 | BMI088→EKF→InsData→Topic→云台电机PID→温控 |
+| `robot_task` | 200 Hz | Normal | 512 | CMD + Chassis + Shoot (顺序执行) + DjiDriver::FlushAll() |
+| `daemon_task` | 100 Hz | Normal | 128 | 离线检测 + 蜂鸣器 |
 | `ui_task` | ~1 Hz | BelowNormal | 512 | 裁判系统 UI 绘制 |
 
-### 为什么 robot_task 是 200 Hz 而不是 1 kHz?
-
-- 遥控器输入本身只有 ~50 Hz, 200 Hz 已经绰绰有余
-- 运动学解算 (麦轮/云台) 不需要 1 kHz — 设定目标即可
-- 电机 PID 由 Motor::Update() 在 robot_task 中执行, 200 Hz 对大多数场景足够
-- 如果需要 1 kHz PID (高性能云台), 可以后期将云台电机单独提到 ins_task 中
-
-### 执行时序
+### 5.4 执行时序
 
 ```
 每 5ms (robot_task):
@@ -143,29 +259,38 @@ robot.cpp (C++):
   │   ├── 模式决策
   │   └── 发布: chassis_cmd, gimbal_cmd, shoot_cmd
   │
-  ├─ GimbalTask()
-  │   ├── 订阅: gimbal_cmd, ins_topic
-  │   ├── 模式切换 (零力/自由/陀螺仪)
-  │   ├── 电机 Update() (PID + 输出)
-  │   └── 发布: gimbal_feed
-  │
   ├─ ShootTask()
   │   ├── 订阅: shoot_cmd
   │   ├── 摩擦轮/拨弹盘控制
-  │   ├── 电机 Update()
+  │   ├── 电机 Update() (PID + 输出)
   │   └── 发布: shoot_feed
   │
   ├─ ChassisTask()
   │   ├── 订阅: chassis_cmd
   │   ├── 麦轮运动学
   │   ├── 功率限制
-  │   ├── 电机 Update()
+  │   ├── 电机 Update() (PID + 输出)
   │   └── 发布: chassis_feed
   │
   └─ DjiDriver::FlushAll()   // 一次性发送所有 CAN 帧
 
 每 1ms (ins_task):
-  BMI088 读取 → Ins 更新 → Topic 发布 → 温控
+  ┌─ BMI088 读取 → Ins 更新 → Topic<InsData> 发布
+  │
+  ├─ GimbalTask()             // 云台在 ins_task 中 1kHz 执行
+  │   ├── 订阅: gimbal_cmd, ins_topic
+  │   ├── 模式切换 (零力/自由/陀螺仪)
+  │   ├── 电机 Update() (PID + 输出)
+  │   └── 发布: gimbal_feed
+  │
+  └─ 温控 (500 Hz)
+
+每 10ms (daemon_task):
+  ├─ DaemonTask()             // 遍历所有注册的 daemon 实例, 计数器递减
+  └─ BuzzerTask()             // 按优先级扫描蜂鸣器报警
+
+~1s (ui_task):
+  └─ UiTask()                 // 裁判系统 UI 绘制 + 发包
 ```
 
 ## 6. Topic 通信拓扑
@@ -176,7 +301,10 @@ robot.cpp (C++):
 #pragma once
 #include "topic.hpp"
 #include "ins_data.hpp"
-#include "robot_types.hpp"
+#include <cstdint>
+
+// ... enum class 定义 (ChassisMode, GimbalMode, ...) ...
+// ... 命令/反馈结构体 (ChassisCmdData, GimbalCmdData, ...) ...
 
 // IMU 姿态 (1 kHz 发布)
 inline Topic<InsData>          ins_topic;
@@ -224,7 +352,10 @@ RC/键鼠                                           裁判系统
 | `shoot_cmd_topic` | cmd | shoot |
 | `shoot_feed_topic` | shoot | cmd |
 
-## 7. 数据类型设计 (robot_types.hpp)
+## 7. 数据类型设计 (robot_topics.hpp 内)
+
+> 以下类型定义和 Topic 实例合并在同一个 `robot_topics.hpp` 中,
+> 减少文件数量, include 一个文件即可获得所有类型和 Topic。
 
 ### 7.1 模式枚举
 
@@ -428,6 +559,56 @@ LOAD_BURST   → 速度环, ref = shoot_rate × 360 × REDUCTION_RATIO / 8
 LOAD_REVERSE → 速度环, ref = -xxx (卡弹反转)
 ```
 
+### 8.5 Daemon (daemon_task.cpp)
+
+**对应 basic_framework**: `daemon.c` + `buzzer.c`, 合并在 `StartDAEMONTASK` (100 Hz) 中。
+
+**Daemon (离线检测)**:
+
+每个需要监控的模块 (遥控器、电机、视觉、裁判系统) 注册一个 Daemon 实例,
+指定超时计数和离线回调。模块每次收到新数据时调用 `Reload()` 喂狗。
+`DaemonTask()` 每 10ms 遍历所有实例, 计数器递减, 归零则触发回调。
+
+```
+使用方式:
+  注册: Daemon::Register({.reload_count = 10, .callback = OnOffline})
+  喂狗: daemon->Reload()      // 在 CAN/UART 接收回调中
+  查询: daemon->IsOnline()    // CMD 中判断是否急停
+  驱动: DaemonTask()          // 100 Hz 遍历 + 递减
+```
+
+**Buzzer (蜂鸣器报警)**:
+
+优先级报警系统。多个报警源 (离线、低电压、卡弹) 按优先级注册,
+`BuzzerTask()` 扫描最高优先级的活跃报警, 驱动 PWM 输出对应频率。
+
+### 8.6 UI (ui_task.cpp)
+
+**对应 basic_framework**: `referee_task.c`, 在 `StartUITASK` 中独立运行。
+
+**职责**: 通过裁判系统串口绘制操作手 UI。
+
+```
+UiInit():
+  初始化裁判系统串口 → 等待收到机器人 ID → 清空 UI → 绘制静态元素 (准线/标签)
+
+UiTask():
+  检测模式变化 → 按需刷新动态元素 (底盘/云台/射击状态, 功率条)
+  每发一包数据 osDelay(1), 避免裁判系统通信拥塞
+```
+
+**数据来源**: 订阅 `chassis_feed_topic`, `gimbal_feed_topic`, `shoot_feed_topic`
+获取当前模式和状态, 无需直接依赖任何子系统头文件。
+
+### 8.7 视觉通信
+
+**对应 basic_framework**: `master_process.c`, VisionSend() 在 ins_task (1 kHz) 中调用。
+
+**设计**: 不单独建任务。
+- **发送**: 在 ins_task 中, INS 更新后立即发送姿态数据 (yaw/pitch/roll), 最小化延迟
+- **接收**: UART/USB 中断回调, 异步解码视觉目标数据, Daemon 监控在线状态
+- **接口**: CMD 通过 Topic 或直接读取视觉数据, 融合到云台控制指令中
+
 ## 9. 多板支持
 
 ### 9.1 板型定义 (robot_def.hpp)
@@ -510,29 +691,30 @@ inline constexpr int8_t GYRO2GIMBAL_DIR_ROLL   = 1;
 
 ## 11. 实现路线图
 
-### Phase 1: 基础框架 (当前可做)
-1. `robot_def.hpp` — 板型宏 + 机械常量
-2. `robot_types.hpp` — 模式枚举 + 命令/反馈结构体
-3. 扩展 `robot_topics.hpp` — 添加 chassis/gimbal/shoot 的 7 个 Topic
-4. `robot_task.hpp/.cpp` — 200 Hz 主任务框架 (空 Init/Task 桩函数)
+### Phase 1: 基础框架 [已完成]
+1. ~~`robot_def.hpp` — 板型宏 + 硬件/机械常量~~
+2. ~~`robot_topics.hpp` — 模式枚举 + 命令/反馈结构体 + Topic 实例~~
+3. ~~`ins_task/` — 1 kHz IMU + EKF → Topic<InsData>~~
+4. ~~`robot.cpp` — RobotInit() 入口~~
 
 ### Phase 2: CMD + 底盘
-5. `cmd/robot_cmd.cpp` — 遥控器初始化 + 输入映射
-6. `chassis/chassis.cpp` — 4 × M3508 + 麦轮运动学
+5. `robot_task/cmd.cpp` — 遥控器初始化 + 输入映射
+6. `robot_task/chassis.cpp` — 4 × M3508 + 麦轮运动学
+7. `robot_task/robot_task.cpp` — 200 Hz 主任务框架
 
 ### Phase 3: 云台 + 发射
-7. `gimbal/gimbal.cpp` — 2 × GM6020 + IMU 反馈
-8. `shoot/shoot.cpp` — 摩擦轮 + 拨弹盘
+8. `robot_task/gimbal.cpp` — 2 × GM6020 + IMU 反馈 (在 ins_task 中 1 kHz 执行)
+9. `robot_task/shoot.cpp` — 摩擦轮 + 拨弹盘
 
 ### Phase 4: 外围
-9. 功率限制集成 (PowerLimiter + SuperCap)
-10. 裁判系统 UI
-11. 视觉通信
-12. 看门狗 / 离线检测
+10. `daemon_task/` — 离线检测 + 蜂鸣器
+11. 功率限制集成 (PowerLimiter + SuperCap)
+12. 视觉通信 (ins_task 中发送, 中断接收)
+13. `ui_task/` — 裁判系统 UI
 
 ### Phase 5: 多板
-13. CAN 通信层封装
-14. 双板条件编译测试
+14. CAN 通信层封装
+15. 双板条件编译测试
 
 ## 12. 关键设计模式总结
 
@@ -540,8 +722,10 @@ inline constexpr int8_t GYRO2GIMBAL_DIR_ROLL   = 1;
 |---|---|
 | **Pub-Sub 解耦** | 子系统间零 include, 全部通过 Topic<T> 通信 |
 | **CMD 单点决策** | 只有 CMD 写入 mode 枚举, 子系统只读 |
-| **配置分层** | robot_def (常量) → robot_types (类型) → robot_topics (实例) |
+| **配置合并** | robot_def (常量) + robot_topics (类型+Topic 实例), 两文件即可 |
 | **TaskManager 编排** | 每个独立任务用 TaskManager lambda 封装, 生命周期清晰 |
 | **文件作用域 static** | 每个 app 的状态都是 static, 等价于单例但无 class 开销 |
 | **Motor 模板零虚函数** | `Motor<DjiDriver, CascadePid>` 编译期组合, 零运行时开销 |
-| **ISP 防火墙** | ins_data.hpp / robot_types.hpp 是轻量头文件, 不传递 heavy 依赖 |
+| **ISP 防火墙** | ins_data.hpp / robot_topics.hpp 是轻量头文件, 不传递 heavy 依赖 |
+| **云台 1 kHz** | 云台电机 PID 在 ins_task 中执行, 与 IMU 同步, 零延迟反馈 |
+| **无 motor_task** | 电机由持有者驱动, 不需要全局注册表和集中式任务 |
