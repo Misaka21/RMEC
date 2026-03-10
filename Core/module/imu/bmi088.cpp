@@ -8,8 +8,8 @@
 
 // ========================= 静态初始化表定义 =========================
 
-constexpr Bmi088::RegEntry Bmi088::kAccelInitTable[];
-constexpr Bmi088::RegEntry Bmi088::kGyroInitTable[];
+constexpr Bmi088::RegEntry Bmi088::ACCEL_INIT_TABLE[];
+constexpr Bmi088::RegEntry Bmi088::GYRO_INIT_TABLE[];
 
 // ========================= SPI 读写 helpers =========================
 
@@ -66,7 +66,7 @@ uint8_t Bmi088::InitAccel() {
 
     // 写寄存器表并回读验证
     uint8_t error = 0;
-    for (const auto& entry : kAccelInitTable) {
+    for (const auto& entry : ACCEL_INIT_TABLE) {
         AccelWriteReg(entry.reg, entry.value);
         DwtInstance::DwtDelay(bmi088::REG_WRITE_DELAY_S);
 
@@ -94,7 +94,7 @@ uint8_t Bmi088::InitGyro() {
 
     // 写寄存器表并回读验证
     uint8_t error = 0;
-    for (const auto& entry : kGyroInitTable) {
+    for (const auto& entry : GYRO_INIT_TABLE) {
         GyroWriteReg(entry.reg, entry.value);
         DwtInstance::DwtDelay(bmi088::REG_READ_DELAY_S);
 

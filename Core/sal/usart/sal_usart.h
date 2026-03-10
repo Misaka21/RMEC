@@ -98,13 +98,13 @@ namespace sal
         /**
          * @brief 发送函数,BLOCK/IT/DMA三种模式,使用前需先设置发送模式(或初始化时传入)
          *
-         * @attention timeout参数仅在[UART_TX_BLOCK]模式下生效
+         * @attention timeout参数仅在[UartTxType::BLOCK]模式下生效
          * @attention 若为IT/DMA,需保证data在离开调用者的作用域前不会被修改且离开后不会被释放!!!
          * @attention 若使用非阻塞的队列发送,需保证这些数据块不被修改/释放!!!
          *
          * @param data 发送数据指针,注意在发送完成前不要修改/释放
          * @param size 发送数据长度,以byte计
-         * @param timeout 发送超时时间,单位ms,仅在[UART_TX_BLOCK]模式下生效,注意默认参数值为无限等待
+         * @param timeout 发送超时时间,单位ms,仅在[UartTxType::BLOCK]模式下生效,注意默认参数值为无限等待
          * @return UartTxState 返回发送状态
          */
         UartTxState UartSend(uint8_t *data, uint16_t size, uint32_t timeout = HAL_MAX_DELAY);

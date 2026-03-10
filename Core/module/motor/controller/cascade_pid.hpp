@@ -30,9 +30,9 @@ struct CascadePidConfig {
 
 /// 级联 PID 控制器（Header-only）
 /// 根据 loop_mode 位掩码决定控制环路：
-///   kSpeed      → 仅速度环
-///   kAngle      → 仅角度环（输出直接作为控制量）
-///   kAngleSpeed → angle_pid → speed_pid 级联
+///   SPEED      → 仅速度环
+///   ANGLE      → 仅角度环（输出直接作为控制量）
+///   ANGLE_SPEED → angle_pid → speed_pid 级联
 class CascadePid {
 public:
     CascadePid() = default;

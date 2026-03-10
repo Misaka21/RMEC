@@ -25,7 +25,7 @@ void PowerLimiter::UpdateEnergyLoop(float referee_power_limit,
     last_measured_power_ = measured_power;
 
     // 最低功率限制: 始终保留 5W 余量
-    constexpr float kMinPower = 5.0f;
+    constexpr float MIN_POWER = 5.0f;
     const float sqrt_buf = std::sqrt(std::fmax(buffer_energy, 0.0f));
     const float inv_dt = (dt > 1e-6f) ? (1.0f / dt) : 0.0f;
 
@@ -37,7 +37,7 @@ void PowerLimiter::UpdateEnergyLoop(float referee_power_limit,
         base_max_power_ = referee_power_limit
                           - cfg_.energy.kp * err
                           - cfg_.energy.kd * d_err;
-        base_max_power_ = std::fmax(base_max_power_, kMinPower);
+        base_max_power_ = std::fmax(base_max_power_, MIN_POWER);
         base_max_power_ = std::fmin(base_max_power_,
                                     referee_power_limit + cfg_.energy.max_extra_power);
         last_base_err_ = err;
@@ -51,7 +51,7 @@ void PowerLimiter::UpdateEnergyLoop(float referee_power_limit,
         full_max_power_ = referee_power_limit
                           - cfg_.energy.kp * err
                           - cfg_.energy.kd * d_err;
-        full_max_power_ = std::fmax(full_max_power_, kMinPower);
+        full_max_power_ = std::fmax(full_max_power_, MIN_POWER);
         full_max_power_ = std::fmin(full_max_power_,
                                     referee_power_limit + cfg_.energy.max_extra_power);
         last_full_err_ = err;
@@ -156,9 +156,9 @@ void PowerLimiter::Limit(PowerMotorState* states, uint8_t count) {
     for (uint8_t i = 0; i < n; ++i) {
         sum_error += std::fabs(states[i].set_speed_rad - states[i].speed_rad);
     }
-    constexpr float kErrLow  = 15.0f;
-    constexpr float kErrHigh = 20.0f;
-    const float err_conf = Clamp((sum_error - kErrLow) / (kErrHigh - kErrLow),
+    constexpr float ERR_LOW  = 15.0f;
+    constexpr float ERR_HIGH = 20.0f;
+    const float err_conf = Clamp((sum_error - ERR_LOW) / (ERR_HIGH - ERR_LOW),
                                  0.0f, 1.0f);
 
     // 5. 混合权重: blend(equal, cmd_proportion, errorConfidence)

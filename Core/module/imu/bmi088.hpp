@@ -96,7 +96,7 @@ private:
         uint8_t error_code;
     };
 
-    static constexpr RegEntry kAccelInitTable[] = {
+    static constexpr RegEntry ACCEL_INIT_TABLE[] = {
         {bmi088::ACC_PWR_CTRL,  bmi088::ACC_ENABLE_ON,
          static_cast<uint8_t>(bmi088::Bmi088Error::ACC_PWR_CTRL_ERROR)},
         {bmi088::ACC_PWR_CONF,  bmi088::ACC_PWR_ACTIVE_MODE,
@@ -111,7 +111,7 @@ private:
          static_cast<uint8_t>(bmi088::Bmi088Error::INT_MAP_DATA_ERROR)},
     };
 
-    static constexpr RegEntry kGyroInitTable[] = {
+    static constexpr RegEntry GYRO_INIT_TABLE[] = {
         {bmi088::GYRO_RANGE,         bmi088::GYRO_2000DPS,
          static_cast<uint8_t>(bmi088::Bmi088Error::GYRO_RANGE_ERROR)},
         {bmi088::GYRO_BANDWIDTH,     static_cast<uint8_t>(bmi088::GYRO_1000_116HZ | bmi088::GYRO_BW_MUST_SET),
