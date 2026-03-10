@@ -46,6 +46,10 @@ inline constexpr float IMU_HEAT_MAX_OUT        = 2000.0f;
 inline constexpr float IMU_HEAT_INTEGRAL_LIMIT = 300.0f;
 inline constexpr float IMU_HEAT_TARGET_TEMP    = 40.0f;
 
+// IMU 预校准值 (在线校准超时时回退)
+inline constexpr float IMU_PRE_GYRO_OFFSET[3]  = {0.000888f, -0.004519f, 0.003640f};
+inline constexpr float IMU_PRE_G_NORM           = 9.8909f;
+
 // ======================== 云台 ========================
 
 inline constexpr uint16_t YAW_CHASSIS_ALIGN_ECD     = 2711;   // TODO: 实测标定

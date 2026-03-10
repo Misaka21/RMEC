@@ -48,6 +48,11 @@ void InsTaskStart() {
             bmi_cfg.heat_tim_channel = IMU_HEAT_CHANNEL;
             bmi_cfg.heat_target_temp = IMU_HEAT_TARGET_TEMP;
 
+            bmi_cfg.pre_cali.gyro_offset[0] = IMU_PRE_GYRO_OFFSET[0];
+            bmi_cfg.pre_cali.gyro_offset[1] = IMU_PRE_GYRO_OFFSET[1];
+            bmi_cfg.pre_cali.gyro_offset[2] = IMU_PRE_GYRO_OFFSET[2];
+            bmi_cfg.pre_cali.g_norm         = IMU_PRE_G_NORM;
+
             imu = new Bmi088(bmi_cfg);   // ~6s 阻塞校准
 
             // 2. 读 100 样本计算初始四元数
@@ -80,11 +85,8 @@ void InsTaskStart() {
             Bmi088Data bmi_data;
             imu->Acquire(bmi_data);
 
-            ins->Update(bmi_data.gyro, bmi_data.acc, dt);
-
-            InsData pub = ins->Data();
-            pub.temperature = bmi_data.temperature;
-            ins_topic.Publish(pub);
+            ins->Update(bmi_data.gyro, bmi_data.acc, dt, bmi_data.temperature);
+            ins_topic.Publish(ins->Data());
 
             if (count++ % 2 == 0)
                 imu->HeaterCtrl(heat_dwt.DwtGetDeltaT());
