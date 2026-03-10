@@ -1,6 +1,6 @@
 #pragma once
 
-#include "arm_math.h"
+#include "matrix.h"
 #ifdef PI
 #undef PI // arm_math.h 定义了 PI 宏, 与 general_def.hpp 的 constexpr 冲突
 #endif
@@ -30,27 +30,15 @@ public:
     const QuaternionEkfOutput& Output() const { return output_; }
 
 private:
-    // NX=6, NZ=3 固定大小矩阵数据
-    float xhat_data_[6]{}, xhatminus_data_[6]{}, z_data_[3]{};
-    float P_data_[36]{}, Pminus_data_[36]{};
-    float F_data_[36]{}, FT_data_[36]{};
-    float H_data_[18]{}, HT_data_[18]{};
-    float Q_data_[36]{}, R_data_[9]{}, K_data_[18]{};
-    float S_data_[36]{};
-    float tmp_mat_data_[36]{}, tmp_mat1_data_[36]{};
-    float tmp_vec_data_[6]{}, tmp_vec1_data_[6]{};
-    float chi_sq_data_[1]{};
+    template <int N> using Vec = Matrixf<N, 1>;
+    template <int R, int C> using Mat = Matrixf<R, C>;
 
-    // ARM DSP 矩阵描述符
-    arm_matrix_instance_f32 mat_xhat_{}, mat_xhatminus_{}, mat_z_{};
-    arm_matrix_instance_f32 mat_P_{}, mat_Pminus_{};
-    arm_matrix_instance_f32 mat_F_{}, mat_FT_{};
-    arm_matrix_instance_f32 mat_H_{}, mat_HT_{};
-    arm_matrix_instance_f32 mat_Q_{}, mat_R_{}, mat_K_{};
-    arm_matrix_instance_f32 mat_S_{};
-    arm_matrix_instance_f32 mat_tmp_{}, mat_tmp1_{};
-    arm_matrix_instance_f32 mat_vec_{}, mat_vec1_{};
-    arm_matrix_instance_f32 mat_chi_sq_{};
+    // EKF 矩阵 (跨子函数共享)
+    Vec<6> xhat_{}, xhatminus_{};
+    Vec<3> z_{};
+    Mat<6,6> P_{}, Pminus_{}, F_{}, Q_{};
+    Mat<3,6> H_{};
+    Mat<3,3> R_{};
 
     // 算法状态
     QuaternionEkfOutput output_{};

@@ -215,7 +215,6 @@ Matrixf<_dim, _dim> inv(Matrixf<_dim, _dim> mat) {
       s = ARM_MATH_SINGULAR;
     }
     if (abs_max_row != i) {  // row exchange
-      float tmp;
       Matrixf<1, 2 * _dim> row_i = ext_mat.row(i);
       Matrixf<1, 2 * _dim> row_abs_max = ext_mat.row(abs_max_row);
       memcpy(ext_mat[i], row_abs_max[0], 2 * _dim * sizeof(float));
