@@ -33,6 +33,7 @@ option(BUILD_DSP "Build CMSIS-DSP library from source" ON)
 
 if(BUILD_DSP)
     add_subdirectory(${CMAKE_SOURCE_DIR}/ExtLibs/DSP/Source)
+    target_compile_options(CMSISDSP PRIVATE ${MCU_FLAGS} -w)
 endif()
 
 # Generic compiler settings for optimization and basic link lib
