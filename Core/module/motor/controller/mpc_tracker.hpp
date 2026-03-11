@@ -2,7 +2,7 @@
 
 #include "pid_controller.hpp"
 #include "motor_measure.hpp"
-#include "cascade_pid.hpp"  // FeedbackOverride
+#include "feedback_override.hpp"
 
 /// MPC 轨迹跟踪设定值
 struct MpcRef {

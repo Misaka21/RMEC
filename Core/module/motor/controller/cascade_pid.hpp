@@ -2,6 +2,7 @@
 
 #include "pid_controller.hpp"
 #include "motor_measure.hpp"
+#include "feedback_override.hpp"
 
 #include <cstdint>
 
@@ -12,12 +13,6 @@ inline constexpr uint8_t SPEED       = 0b010;
 inline constexpr uint8_t ANGLE       = 0b100;
 inline constexpr uint8_t ANGLE_SPEED = 0b110;  // angle → speed 级联
 } // namespace loop_mode
-
-/// 外部反馈覆盖（IMU 角度/角速度等）
-struct FeedbackOverride {
-    const float* angle_fb  = nullptr;   // 若非空，角度环使用此反馈
-    const float* speed_fb  = nullptr;   // 若非空，速度环使用此反馈
-};
 
 /// 级联 PID 控制器配置
 struct CascadePidConfig {
@@ -68,8 +63,11 @@ public:
     /// @return 控制量（电流/电压指令）
     float Compute(const CascadeRef& ref, const MotorMeasure& measure, float dt) {
         float target = ref.target;
-        if (reverse_)
+        float ff = ref.feedforward;
+        if (reverse_) {
             target = -target;
+            ff = -ff;
+        }
 
         float output = target;
 
@@ -89,7 +87,7 @@ public:
             output = speed_pid_.Calculate(speed_fb, output, dt);
         }
 
-        output += ref.feedforward;
+        output += ff;
         return output;
     }
 
