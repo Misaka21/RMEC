@@ -40,9 +40,7 @@ void RemoteOfflineCheck() {
     }
 
     if (offline_cnt >= offline_threshold && !offline_published) {
-        remote::Dt7Data zero{};
-        remote_topic.Publish(zero);
-        rc->RestartRx();
+        rc->ResetAndPublish();
         offline_published = true;
     }
 }

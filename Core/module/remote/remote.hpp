@@ -84,8 +84,20 @@ public:
     /// 最近一次成功写入的序号（偶数）
     uint32_t SnapshotSeq() const { return seq_; }
 
-    /// bridge 触发离线恢复时可调用
-    void RestartRx() {
+    /// 离线恢复: Reset 数据 → seqlock 写入 → 回调发布 → 重启 UART
+    /// 由 app 离线检测调用, 保证 Publish 只经由 on_publish_ 一条路径
+    void ResetAndPublish() {
+        Data zero{};
+        Protocol::Reset(zero);
+        last_data_ = zero;
+
+        ++seq_;
+        REMOTE_COMPILER_BARRIER();
+        data_ = zero;
+        REMOTE_COMPILER_BARRIER();
+        ++seq_;
+
+        if (on_publish_) on_publish_(zero);
         if (uart_) uart_->UartRestartRecv();
     }
 
