@@ -59,24 +59,26 @@ RMEC 针对上述痛点，以 C++17 重新设计了整套架构。
 ### 2.1 三层结构
 
 ```mermaid
-graph TD
-    subgraph App["App Layer"]
-        direction LR
-        A1(robot.cpp) ~~~ A2(ins_task) ~~~ A3(remote_task) ~~~ A4(motor_task)
-        A5(daemon_task) ~~~ A6(comm_task) ~~~ A7(robot_def.hpp) ~~~ A8(robot_topics.hpp)
+block-beta
+    columns 1
+    block:App["App Layer"]
+        columns 4
+        A1["robot.cpp"] A2["ins_task"] A3["remote_task"] A4["motor_task"]
+        A5["daemon_task"] A6["comm_task"] A7["robot_def.hpp"] A8["robot_topics.hpp"]
     end
-    subgraph Module["Module Layer"]
-        direction LR
-        M1("Motor‹D,C›") ~~~ M2(Bmi088 / Ins) ~~~ M3("Remote‹P›") ~~~ M4(Daemon)
-        M5("CanComm‹Tx,Rx›") ~~~ M6(PidController) ~~~ M7(QuaternionEkf) ~~~ M8("PowerLimiter / Rls2 / Topic‹T›")
+    block:Module["Module Layer"]
+        columns 4
+        M1["Motor&lt;D,C&gt;"] M2["Bmi088 / Ins"] M3["Remote&lt;P&gt;"] M4["Daemon"]
+        M5["CanComm&lt;Tx,Rx&gt;"] M6["PidController"] M7["QuaternionEkf"] M8["PowerLimiter / Topic&lt;T&gt;"]
     end
-    subgraph SAL["SAL — Software Abstraction Layer"]
-        direction LR
-        S1(CanInstance) ~~~ S2(UartInstance) ~~~ S3(SpiInstance) ~~~ S4(I2cInstance)
-        S5(GpioInstance) ~~~ S6(PwmInstance) ~~~ S7(DwtInstance) ~~~ S8("FlashInstance / UsbInstance / Log / TaskManager")
+    block:SAL["SAL — Software Abstraction Layer"]
+        columns 4
+        S1["CanInstance"] S2["UartInstance"] S3["SpiInstance"] S4["I2cInstance"]
+        S5["GpioInstance"] S6["PwmInstance"] S7["DwtInstance"] S8["Flash / USB / Log"]
     end
-    subgraph HAL["HAL / CMSIS / FreeRTOS / CMSIS-DSP"]
-        H1(" ")
+    block:HAL["HAL / CMSIS / FreeRTOS / CMSIS-DSP"]
+        columns 1
+        space
     end
 
     App --> Module --> SAL --> HAL
@@ -276,20 +278,20 @@ DjiDriver::FlushAll();
 ```mermaid
 sequenceDiagram
     participant P as Publisher (ISR/Task)
-    participant T as Topic‹T›
+    participant T as Topic
     participant S as Subscriber (Task)
 
-    P->>T: ++seq_ (→ 奇数: 写入中)
+    P->>T: ++seq_ (奇数, 写入中)
     P->>T: data_ = msg
-    P->>T: ++seq_ (→ 偶数: 完成)
+    P->>T: ++seq_ (偶数, 完成)
 
-    S->>T: 读 seq_ → s1
-    Note right of S: if (s1 & 1) return false — 写入中
-    Note right of S: if (s1 == last_seq_) return false — 无新数据
+    S->>T: 读 seq_ = s1
+    Note right of S: s1 为奇数 → 写入中, return false
+    Note right of S: s1 == last_seq_ → 无新数据, return false
     T->>S: out = data_
-    S->>T: 读 seq_ → s2
-    Note right of S: if (s1 != s2) return false — 被打断
-    Note right of S: last_seq_ = s1; return true
+    S->>T: 读 seq_ = s2
+    Note right of S: s1 != s2 → 被打断, return false
+    Note right of S: last_seq_ = s1, return true
 ```
 
 **设计约束**：
