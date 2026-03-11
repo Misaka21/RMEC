@@ -58,6 +58,59 @@
 - 支持模式: STOP / REVERSE / SINGLE / TRIPLE / BURST
 - 根据模式自动切换 `loop_mode` (SPEED / ANGLE_SPEED)
 
+## PID 调参 (Ozone / STLink)
+
+### 内存布局
+
+电机实例为 `static` 全局变量, debugger 可直接访问:
+
+```
+chassis (ChassisMotors)          gimbal (GimbalMotors)         shoot (ShootMotors)
+├─ lf_  (Motor* , id=1)         ├─ yaw_   (Motor*, GM6020)    ├─ friction_l_ (Motor*)
+├─ rf_  (Motor* , id=2)         └─ pitch_ (Motor*, GM6020)    ├─ friction_r_ (Motor*)
+├─ lb_  (Motor* , id=3)                                       └─ loader_     (Motor*)
+└─ rb_  (Motor* , id=4)
+
+Motor<DjiDriver, CascadePid>
+├─ driver_      (DjiDriver)
+│    └─ measure_  (MotorMeasure)   ← 反馈数据
+├─ controller_  (CascadePid)
+│    ├─ speed_pid_ (PidController) ← 速度环参数
+│    └─ angle_pid_ (PidController) ← 角度环参数
+├─ ref_                            ← 当前设定值
+└─ enabled_
+```
+
+### Watch 变量 (以底盘左前轮为例)
+
+| 变量路径 | 含义 |
+|---|---|
+| `chassis.lf_->ref_` | 速度设定值 |
+| `chassis.lf_->driver_.measure_.speed_aps` | 编码器反馈速度 (deg/s) |
+| `chassis.lf_->controller_.speed_pid_.err_` | 当前误差 |
+| `chassis.lf_->controller_.speed_pid_.pout_` | P 项输出 |
+| `chassis.lf_->controller_.speed_pid_.iout_` | I 项输出 |
+| `chassis.lf_->controller_.speed_pid_.dout_` | D 项输出 |
+| `chassis.lf_->controller_.speed_pid_.output_` | PID 总输出 |
+
+### 在线改参
+
+PID 参数均为普通成员变量 (非 const), debugger 写入即时生效:
+
+| 变量路径 | 说明 |
+|---|---|
+| `...speed_pid_.kp_` | 比例增益 |
+| `...speed_pid_.ki_` | 积分增益 |
+| `...speed_pid_.kd_` | 微分增益 |
+| `...speed_pid_.max_out_` | 输出上限 |
+| `...speed_pid_.integral_limit_` | 积分限幅 |
+
+云台串级 PID 同理, 将 `chassis.lf_` 替换为 `gimbal.yaw_` 或 `gimbal.pitch_`, 分别调 `angle_pid_` (外环) 和 `speed_pid_` (内环)。
+
+### 固化参数
+
+调参满意后将数值抄回 `robot_def.hpp` 对应的 `inline constexpr` 常量 (如 `CHASSIS_SPEED_KP`), 重新编译即固化。
+
 ## 数据流
 
 ```
