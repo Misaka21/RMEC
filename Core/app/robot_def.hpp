@@ -76,6 +76,87 @@ inline constexpr float REDUCTION_RATIO_WHEEL   = 19.0f;
 inline constexpr float ONE_BULLET_DELTA_ANGLE  = 36.0f;   // 度
 inline constexpr float REDUCTION_RATIO_LOADER  = 36.0f;
 
+// ======================== 电机 CAN 句柄 ========================
+
+#define CHASSIS_CAN_HANDLE  hcan2
+#define YAW_CAN_HANDLE      hcan1
+#define PITCH_CAN_HANDLE    hcan1
+#define FRICTION_CAN_HANDLE hcan2
+#define LOADER_CAN_HANDLE   hcan2
+
+// ======================== 底盘电机 PID ========================
+
+// M3508 速度环
+inline constexpr float CHASSIS_SPEED_KP          = 10.0f;
+inline constexpr float CHASSIS_SPEED_KI          = 1.0f;
+inline constexpr float CHASSIS_SPEED_KD          = 0.0f;
+inline constexpr float CHASSIS_SPEED_MAX_OUT     = 12000.0f;
+inline constexpr float CHASSIS_SPEED_INTEGRAL_LIMIT = 3000.0f;
+
+// 功率模型: M3508 减速比 19:1
+inline constexpr float CHASSIS_OUTPUT_TO_TORQUE =
+    (20.0f / 16384.0f) * 0.3f * (3591.0f / 187.0f);
+
+// ======================== 云台电机 PID ========================
+
+// Yaw GM6020 — 角度环 (外环)
+inline constexpr float YAW_ANGLE_KP              = 8.0f;
+inline constexpr float YAW_ANGLE_KI              = 0.0f;
+inline constexpr float YAW_ANGLE_KD              = 0.0f;
+inline constexpr float YAW_ANGLE_MAX_OUT         = 500.0f;
+
+// Yaw GM6020 — 速度环 (内环)
+inline constexpr float YAW_SPEED_KP              = 50.0f;
+inline constexpr float YAW_SPEED_KI              = 10.0f;
+inline constexpr float YAW_SPEED_KD              = 0.0f;
+inline constexpr float YAW_SPEED_MAX_OUT         = 30000.0f;
+inline constexpr float YAW_SPEED_INTEGRAL_LIMIT  = 10000.0f;
+
+// Pitch GM6020 — 角度环 (外环)
+inline constexpr float PITCH_ANGLE_KP            = 6.0f;
+inline constexpr float PITCH_ANGLE_KI            = 0.0f;
+inline constexpr float PITCH_ANGLE_KD            = 0.0f;
+inline constexpr float PITCH_ANGLE_MAX_OUT       = 500.0f;
+
+// Pitch GM6020 — 速度环 (内环)
+inline constexpr float PITCH_SPEED_KP            = 50.0f;
+inline constexpr float PITCH_SPEED_KI            = 10.0f;
+inline constexpr float PITCH_SPEED_KD            = 0.0f;
+inline constexpr float PITCH_SPEED_MAX_OUT       = 30000.0f;
+inline constexpr float PITCH_SPEED_INTEGRAL_LIMIT = 10000.0f;
+
+// GM6020 motor_id (拨码开关)
+inline constexpr uint8_t YAW_MOTOR_ID            = 1;
+inline constexpr uint8_t PITCH_MOTOR_ID          = 2;
+
+// ======================== 发射电机 PID ========================
+
+// 摩擦轮 M3508 — 速度环
+inline constexpr float FRICTION_SPEED_KP         = 10.0f;
+inline constexpr float FRICTION_SPEED_KI         = 1.0f;
+inline constexpr float FRICTION_SPEED_KD         = 0.0f;
+inline constexpr float FRICTION_SPEED_MAX_OUT    = 12000.0f;
+inline constexpr float FRICTION_SPEED_INTEGRAL_LIMIT = 3000.0f;
+
+// 拨弹盘 M2006 — 速度环
+inline constexpr float LOADER_SPEED_KP           = 10.0f;
+inline constexpr float LOADER_SPEED_KI           = 1.0f;
+inline constexpr float LOADER_SPEED_KD           = 0.0f;
+inline constexpr float LOADER_SPEED_MAX_OUT      = 10000.0f;
+inline constexpr float LOADER_SPEED_INTEGRAL_LIMIT = 3000.0f;
+
+// 拨弹盘 M2006 — 角度环
+inline constexpr float LOADER_ANGLE_KP           = 8.0f;
+inline constexpr float LOADER_ANGLE_KI           = 0.0f;
+inline constexpr float LOADER_ANGLE_KD           = 0.0f;
+inline constexpr float LOADER_ANGLE_MAX_OUT      = 500.0f;
+
+// 摩擦轮 motor_id
+inline constexpr uint8_t FRICTION_L_MOTOR_ID     = 1;
+inline constexpr uint8_t FRICTION_R_MOTOR_ID     = 2;
+// 拨弹盘 motor_id
+inline constexpr uint8_t LOADER_MOTOR_ID         = 3;
+
 // ======================== IMU 安装方向 ========================
 
 inline constexpr int8_t GYRO2GIMBAL_DIR_YAW    = 1;

@@ -98,9 +98,6 @@ void DjiDriver::FlushAll() {
         sal::CanMsg msg{};
         std::memcpy(msg.data, group.data, 8);
         group.sender->CanTransmit(msg);
-
-        // 清空缓冲区，防止电机失联后仍发送旧指令
-        std::memset(group.data, 0, 8);
     }
 }
 

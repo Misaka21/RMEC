@@ -5,6 +5,7 @@
 #include "robot_topics.hpp"
 #include "ins_task.hpp"
 #include "remote_task.hpp"
+#include "motor_task.hpp"
 #include "daemon_task.hpp"
 
 // Module 层 (编译验证)
@@ -41,6 +42,7 @@ using Dt7Remote       = remote::Remote<remote::Dt7Protocol>;
 extern "C" void RobotInit() {
     InsTaskStart();
     RemoteInit();
+    MotorTaskStart();
     DaemonTaskStart();
-    // 未来: CmdTaskStart(), UiTaskStart() ...
+    // 未来: RobotTaskStart(), UiTaskStart() ...
 }

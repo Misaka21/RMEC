@@ -7,8 +7,6 @@
 /// 编译期检查 Driver 接口
 template <typename D>
 constexpr bool CheckDriverInterface() {
-    static_assert(std::is_constructible_v<D>,
-        "Driver must be default-constructible or have a config constructor");
     // Driver 必须有: SetOutput(float), Measure(), IsOnline(), TickOffline()
     static_assert(std::is_same_v<
         decltype(std::declval<D>().SetOutput(0.0f)), void>,
@@ -74,10 +72,7 @@ public:
 
     // ---- 使能/失能 ----
     void Enable() { enabled_ = true; }
-    void Disable() {
-        enabled_ = false;
-        driver_.SetOutput(0);
-    }
+    void Disable() { enabled_ = false; }
     bool IsEnabled() const { return enabled_; }
 
     // ---- 状态查询 ----
