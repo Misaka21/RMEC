@@ -1,4 +1,4 @@
-# powerful_framework
+# RMEC
 
 常州大学 RoboMaster 2025-2026 赛季 C++ 嵌入式控制框架。
 
@@ -26,7 +26,7 @@ basic_framework 以 C 语言实现了 bsp → module → app 三层架构，在 
 - **代码复用困难**：电机驱动与控制算法无法正交组合，新增电机类型需要大量复制粘贴
 - **并发保护薄弱**：跨任务数据读写依赖人工纪律，缺少系统性机制
 
-powerful_framework 针对上述痛点，以 C++17 重新设计了整套架构。
+RMEC 针对上述痛点，以 C++17 重新设计了整套架构。
 
 ### 1.2 核心设计决策
 
@@ -41,7 +41,7 @@ powerful_framework 针对上述痛点，以 C++17 重新设计了整套架构。
 
 ### 1.3 与 basic_framework 的对照
 
-| 维度 | basic_framework (C) | powerful_framework (C++17) |
+| 维度 | basic_framework (C) | RMEC (C++17) |
 |------|---------------------|---------------------------|
 | 电机抽象 | 运行时函数指针 | `Motor<Driver, Controller>` 编译期组合 |
 | 跨任务通信 | Message Center (轮询 + memcpy) | `Topic<T>` SeqLock (ISR 发布 + 无锁读) |
@@ -211,7 +211,7 @@ graph TB
 
 ### 3.1 电机模板组合系统
 
-电机系统是 powerful_framework 最核心的设计之一。采用 `Motor<Driver, Controller>` 模板将 **CAN 协议编解码** (Driver) 与 **控制算法** (Controller) 正交解耦：
+电机系统是 RMEC 最核心的设计之一。采用 `Motor<Driver, Controller>` 模板将 **CAN 协议编解码** (Driver) 与 **控制算法** (Controller) 正交解耦：
 
 ```cpp
 // 组合示例
