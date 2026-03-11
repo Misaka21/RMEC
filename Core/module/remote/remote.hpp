@@ -13,7 +13,6 @@ namespace remote {
 
 struct RemoteConfig {
     UART_HandleTypeDef* uart_handle = nullptr;
-    uint16_t offline_threshold = 100;   // app bridge 离线判定阈值（周期数）
 };
 
 // ======================== 编译期协议契约检查 ========================
@@ -39,12 +38,10 @@ constexpr bool CheckProtocolInterface() {
 /// 遥控器模板类, Protocol 为编译期策略 (零虚函数)
 ///
 /// UART ISR 驱动的数据源:
-///   ISR → Decode → 更新内部快照
+///   ISR → Decode → seqlock 写快照 → on_publish_ 回调
 ///
-/// App 层只需:
-///   1. 初始化 Remote 实例
-///   2. 在 bridge/pump 中调用 ReadSnapshot()
-///   3. 按需发布 Topic（单写者由 app 保证）
+/// Topic 单写者约束: on_publish_ 是唯一的发布路径 (ISR 上下文)
+/// 离线安全: 由 Daemon + 消费者侧 IsOnline() 判断, 模块不写零帧
 
 template <typename Protocol>
 class Remote {
@@ -84,20 +81,16 @@ public:
     /// 最近一次成功写入的序号（偶数）
     uint32_t SnapshotSeq() const { return seq_; }
 
-    /// 离线恢复: Reset 数据 → seqlock 写入 → 回调发布 → 重启 UART
-    /// 由 app 离线检测调用, 保证 Publish 只经由 on_publish_ 一条路径
-    void ResetAndPublish() {
+    /// 重置协议状态 (清零 last_data_, 下次收帧按"全新"解码)
+    /// 由 daemon 离线回调调用
+    void Reset() {
         Data zero{};
         Protocol::Reset(zero);
         last_data_ = zero;
+    }
 
-        ++seq_;
-        REMOTE_COMPILER_BARRIER();
-        data_ = zero;
-        REMOTE_COMPILER_BARRIER();
-        ++seq_;
-
-        if (on_publish_) on_publish_(zero);
+    /// 重启 UART DMA 接收
+    void RestartRx() {
         if (uart_) uart_->UartRestartRecv();
     }
 
