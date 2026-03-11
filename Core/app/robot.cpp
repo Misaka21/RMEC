@@ -23,6 +23,8 @@
 #include "remote.hpp"
 #include "dt7_protocol.hpp"
 
+#include "mpc_tracker.hpp"
+
 // 编译验证 static_assert
 static_assert(std::is_trivially_copyable_v<InsData>);
 static_assert(std::is_trivially_copyable_v<remote::Dt7Data>);
@@ -34,6 +36,7 @@ static_assert(sizeof(Rls2) > 0);
 
 using DjiCascadeMotor = Motor<DjiDriver, CascadePid>;
 using DjiMitMotor     = Motor<DjiDriver, MitPassthrough>;
+using DjiMpcMotor     = Motor<DjiDriver, MpcTracker>;
 using Dt7Remote       = remote::Remote<remote::Dt7Protocol>;
 
 // ============================================================

@@ -28,6 +28,14 @@ struct CascadePidConfig {
     FeedbackOverride feedback_override{};
 };
 
+/// 级联 PID 设定值（支持前馈）
+struct CascadeRef {
+    float target = 0;
+    float feedforward = 0;
+    CascadeRef() = default;
+    CascadeRef(float t) : target(t) {}  // NOLINT: float 隐式转换
+};
+
 /// 级联 PID 控制器（Header-only）
 /// 根据 loop_mode 位掩码决定控制环路：
 ///   SPEED      → 仅速度环
@@ -35,6 +43,7 @@ struct CascadePidConfig {
 ///   ANGLE_SPEED → angle_pid → speed_pid 级联
 class CascadePid {
 public:
+    using Ref = CascadeRef;
     CascadePid() = default;
 
     explicit CascadePid(const CascadePidConfig& cfg)
@@ -57,18 +66,19 @@ public:
     /// @param measure 电机反馈数据
     /// @param dt      时间间隔(s)
     /// @return 控制量（电流/电压指令）
-    float Compute(float ref, const MotorMeasure& measure, float dt) {
+    float Compute(const CascadeRef& ref, const MotorMeasure& measure, float dt) {
+        float target = ref.target;
         if (reverse_)
-            ref = -ref;
+            target = -target;
 
-        float output = ref;
+        float output = target;
 
         // 角度环
         if (loop_mode_ & loop_mode::ANGLE) {
             float angle_fb = (fb_override_.angle_fb != nullptr)
                 ? *fb_override_.angle_fb
                 : measure.total_angle;
-            output = angle_pid_.Calculate(angle_fb, ref, dt);
+            output = angle_pid_.Calculate(angle_fb, target, dt);
         }
 
         // 速度环
@@ -79,6 +89,7 @@ public:
             output = speed_pid_.Calculate(speed_fb, output, dt);
         }
 
+        output += ref.feedforward;
         return output;
     }
 

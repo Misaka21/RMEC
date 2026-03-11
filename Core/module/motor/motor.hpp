@@ -28,10 +28,12 @@ template <typename C>
 constexpr bool CheckControllerInterface() {
     static_assert(std::is_default_constructible_v<C>,
         "Controller must be default-constructible");
-    // Controller 必须有: float Compute(float ref, const MotorMeasure& m, float dt)
+    // Controller 必须有: float Compute(const Ref&, const MotorMeasure&, float)
     static_assert(std::is_same_v<
-        decltype(std::declval<C>().Compute(0.0f, std::declval<const MotorMeasure&>(), 0.0f)), float>,
-        "Controller must have float Compute(float, const MotorMeasure&, float)");
+        decltype(std::declval<C>().Compute(
+            std::declval<const typename C::Ref&>(),
+            std::declval<const MotorMeasure&>(), 0.0f)), float>,
+        "Controller must have float Compute(const Ref&, const MotorMeasure&, float)");
     return true;
 }
 
@@ -56,6 +58,8 @@ class Motor {
     static_assert(CheckControllerInterface<Controller>());
 
 public:
+    using Ref = typename Controller::Ref;
+
     /// 构造：分别传入 Driver 和 Controller 的配置
     template <typename DriverCfg, typename ControllerCfg>
     Motor(const DriverCfg& drv_cfg, const ControllerCfg& ctrl_cfg)
@@ -69,13 +73,13 @@ public:
     // ---- 设定值 ----
     /// 设置目标值 + 环路模式（显式声明意图，防止模式/值错配）
     /// 仅当 Controller 支持 SetLoopMode 时可用（如 CascadePid）
-    void SetTarget(uint8_t mode, float ref) {
+    void SetTarget(uint8_t mode, const Ref& ref) {
         controller_.SetLoopMode(mode);
         ref_ = ref;
     }
     /// 设置目标值（不切换模式，适用于模式固定的电机）
-    void SetRef(float ref) { ref_ = ref; }
-    float GetRef() const { return ref_; }
+    void SetRef(const Ref& ref) { ref_ = ref; }
+    const Ref& GetRef() const { return ref_; }
 
     // ---- 使能/失能 ----
     void Enable() { enabled_ = true; }
@@ -125,6 +129,6 @@ public:
 private:
     Driver driver_;
     Controller controller_{};
-    float ref_ = 0;
+    Ref ref_{};
     bool enabled_ = false;
 };

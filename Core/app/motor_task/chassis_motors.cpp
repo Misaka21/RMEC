@@ -70,7 +70,7 @@ void ChassisMotors::Tick(float dt) {
     for (int i = 0; i < 4; ++i) {
         states[i].pid_output    = motors[i]->ComputeOutput(dt);
         states[i].speed_rad     = motors[i]->Measure().speed_aps * DEGREE_2_RAD;
-        states[i].set_speed_rad = motors[i]->GetRef() * DEGREE_2_RAD;
+        states[i].set_speed_rad = motors[i]->GetRef().target * DEGREE_2_RAD;
         states[i].max_output    = CHASSIS_SPEED_MAX_OUT;
     }
 
