@@ -3,6 +3,8 @@
 #include "robot_topics.hpp"
 #include "daemon.hpp"
 
+#if defined(ONE_BOARD) || defined(GIMBAL_BOARD)
+
 #include "usart.h"
 
 static Dt7Remote* rc = nullptr;
@@ -30,3 +32,11 @@ bool RemoteIsOnline() {
 }
 
 Dt7Remote* GetRemote() { return rc; }
+
+#else // CHASSIS_BOARD — 不运行遥控器
+
+void RemoteInit() {}
+bool RemoteIsOnline() { return false; }
+Dt7Remote* GetRemote() { return nullptr; }
+
+#endif

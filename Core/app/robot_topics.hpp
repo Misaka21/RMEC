@@ -92,6 +92,20 @@ static_assert(std::is_trivially_copyable_v<ChassisFeedData>);
 static_assert(std::is_trivially_copyable_v<GimbalFeedData>);
 static_assert(std::is_trivially_copyable_v<ShootFeedData>);
 
+// ======================== 双板通信数据 ========================
+
+#pragma pack(1)
+struct BoardCommTxData {
+    uint8_t placeholder[8];  // 用户填入实际字段
+};
+struct BoardCommRxData {
+    uint8_t placeholder[8];  // 用户填入实际字段
+};
+#pragma pack()
+
+static_assert(std::is_trivially_copyable_v<BoardCommTxData>);
+static_assert(std::is_trivially_copyable_v<BoardCommRxData>);
+
 // ======================== Topic 实例 ========================
 
 // IMU 姿态 (1 kHz, ins_task 发布)
@@ -109,3 +123,6 @@ inline Topic<ShootCmdData>    shoot_cmd_topic;
 inline Topic<ChassisFeedData> chassis_feed_topic;
 inline Topic<GimbalFeedData>  gimbal_feed_topic;
 inline Topic<ShootFeedData>   shoot_feed_topic;
+
+// 双板通信接收数据 (100 Hz, comm_task 发布)
+inline Topic<BoardCommRxData> board_comm_topic;

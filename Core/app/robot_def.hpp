@@ -162,6 +162,12 @@ inline constexpr uint8_t FRICTION_R_MOTOR_ID     = 6;
 // 拨弹盘 motor_id
 inline constexpr uint8_t LOADER_MOTOR_ID         = 7;
 
+// ======================== 双板通信 ========================
+
+#define COMM_CAN_HANDLE  hcan1
+inline constexpr uint16_t COMM_BASE_TX_ID = 0x100;
+inline constexpr uint16_t COMM_BASE_RX_ID = 0x110;
+
 // ======================== IMU 安装方向 ========================
 
 inline constexpr int8_t GYRO2GIMBAL_DIR_YAW    = 1;
