@@ -81,14 +81,6 @@ public:
     /// 最近一次成功写入的序号（偶数）
     uint32_t SnapshotSeq() const { return seq_; }
 
-    /// 重置协议状态 (清零 last_data_, 下次收帧按"全新"解码)
-    /// 由 daemon 离线回调调用
-    void Reset() {
-        Data zero{};
-        Protocol::Reset(zero);
-        last_data_ = zero;
-    }
-
     /// 重启 UART DMA 接收
     void RestartRx() {
         if (uart_) uart_->UartRestartRecv();

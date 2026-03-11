@@ -12,13 +12,10 @@ void RemoteInit() {
     remote::RemoteConfig cfg{};
     cfg.uart_handle = &RC_UART_HANDLE;
 
-    // 1. 创建 daemon 实例: 10 tick @ 100Hz = 100ms 超时
+    // 1. 创建 daemon: 10 tick @ 100Hz = 100ms 超时
     rc_daemon = new daemon::DaemonInstance({
-        .reload_count = 10,
-        .callback = []() {
-            rc->Reset();
-            rc->RestartRx();
-        },
+        .timeout_ticks = 10,
+        .on_offline = [](void*) { rc->RestartRx(); },
     });
 
     // 2. 创建遥控器: ISR 回调发布 + 喂狗 (唯一 Topic 写者)

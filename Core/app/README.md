@@ -16,7 +16,8 @@ app/
 ├── robot_def.hpp         # 硬件映射和机器人参数 (板型, 引脚, PID 参数)
 ├── robot_topics.hpp      # 全局 Topic 实例 (数据流清单)
 ├── ins_task/             # IMU 姿态估计任务 (1 kHz FreeRTOS 任务)
-└── remote_task/          # 遥控器初始化 + ISR 发布编排
+├── remote_task/          # 遥控器初始化 + ISR 发布 + Daemon 离线检测
+└── daemon_task/          # 看门狗任务 (100 Hz, DaemonInstance::TickAll)
 ```
 
 ## 数据流
@@ -26,7 +27,7 @@ app/
                     │           robot_topics.hpp          │
                     │                                     │
   ins_task ──────── │ → ins_topic (1 kHz)                 │
-  UART ISR ──────── │ → remote_topic (~70 Hz)             │
+  UART ISR ──────── │ → remote_topic (~70 Hz, ISR 回调)    │
                     │                                     │
   (未来) cmd_task ── │ → chassis_cmd / gimbal_cmd / shoot  │ ──→ 子系统 task
   子系统 task ────── │ → chassis_feed / gimbal_feed        │ ──→ cmd_task
@@ -40,7 +41,8 @@ main.c
   → MX_xxx_Init()          // CubeMX 外设初始化
   → RobotInit()            // C++ 入口 (robot.cpp)
       → InsTaskStart()     // 创建 1 kHz IMU 任务
-      → RemoteInit()       // 创建遥控器实例, 启动 UART DMA
+      → RemoteInit()       // 创建遥控器 + Daemon, 启动 UART DMA
+      → DaemonTaskStart()  // 启动 100Hz 看门狗任务
   → osKernelStart()        // 启动调度器
 ```
 
@@ -60,7 +62,7 @@ main.c
 | Topic | 频率 | 发布者 | 数据类型 |
 |---|---|---|---|
 | `ins_topic` | 1 kHz | ins_task | `InsData` |
-| `remote_topic` | ~70 Hz | UART ISR | `Dt7Data` |
+| `remote_topic` | ~70 Hz | UART ISR (via Remote) | `Dt7Data` |
 | `chassis_cmd_topic` | 200 Hz | cmd_task | `ChassisCmdData` |
 | `gimbal_cmd_topic` | 200 Hz | cmd_task | `GimbalCmdData` |
 | `shoot_cmd_topic` | 200 Hz | cmd_task | `ShootCmdData` |
