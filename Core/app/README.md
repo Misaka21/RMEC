@@ -15,8 +15,10 @@ app/
 ├── robot.cpp             # RobotInit() — C++ 侧唯一入口
 ├── robot_def.hpp         # 硬件映射和机器人参数 (板型, 引脚, PID 参数)
 ├── robot_topics.hpp      # 全局 Topic 实例 (数据流清单)
-├── ins_task/             # IMU 姿态估计任务 (1 kHz FreeRTOS 任务)
+├── ins_task/             # IMU 姿态估计任务 (1 kHz)
 ├── remote_task/          # 遥控器初始化 + ISR 发布 + Daemon 离线检测
+├── motor_task/           # 电机控制任务 (1 kHz, 底盘/云台/发射)
+├── comm_task/            # 双板 CAN 通信任务 (100 Hz)
 └── daemon_task/          # 看门狗任务 (100 Hz, DaemonInstance::TickAll)
 ```
 
@@ -40,9 +42,11 @@ app/
 main.c
   → MX_xxx_Init()          // CubeMX 外设初始化
   → RobotInit()            // C++ 入口 (robot.cpp)
-      → InsTaskStart()     // 创建 1 kHz IMU 任务
-      → RemoteInit()       // 创建遥控器 + Daemon, 启动 UART DMA
-      → DaemonTaskStart()  // 启动 100Hz 看门狗任务
+      → InsTaskStart()     // 创建 1 kHz IMU 任务 (ONE_BOARD / GIMBAL_BOARD)
+      → RemoteInit()       // 创建遥控器 + Daemon (ONE_BOARD / GIMBAL_BOARD)
+      → MotorTaskStart()   // 创建 1 kHz 电机任务 (全板型, 内部按板型裁剪)
+      → CommTaskStart()    // 创建 100 Hz 双板通信 (GIMBAL_BOARD / CHASSIS_BOARD)
+      → DaemonTaskStart()  // 启动 100 Hz 看门狗任务 (全板型)
   → osKernelStart()        // 启动调度器
 ```
 
@@ -69,3 +73,4 @@ main.c
 | `chassis_feed_topic` | 200 Hz | chassis_task | `ChassisFeedData` |
 | `gimbal_feed_topic` | 200 Hz | gimbal_task | `GimbalFeedData` |
 | `shoot_feed_topic` | 200 Hz | shoot_task | `ShootFeedData` |
+| `board_comm_topic` | 100 Hz | comm_task | `BoardCommRxData` |
