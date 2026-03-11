@@ -4,18 +4,15 @@
 #include "dji_driver.hpp"
 #include "cascade_pid.hpp"
 #include "power_limiter.hpp"
+#include "topic.hpp"
+#include "robot_topics.hpp"
 
+/// 底盘电机执行层（motor_task 独占，外部通过 chassis_cmd_topic 下发命令）
+///
+/// 数据流: chassis_cmd_topic → Tick() → 麦轮分解 → PID → 功率限制 → CAN 缓冲
 class ChassisMotors {
 public:
     void Init();
-
-    // --- robot_task 调用 (语义化, 跨任务安全) ---
-    void SetWheelSpeeds(float lf, float rf, float lb, float rb);
-    void Enable();
-    void Disable();
-    void SetPowerFeedback(float limit_w, float buffer_j, float measured_w);
-
-    // --- motor_task 调用 ---
     void Tick(float dt);
 
 private:
@@ -26,10 +23,6 @@ private:
     M* rb_ = nullptr;
     PowerLimiter limiter_;
 
-    // 缓冲字段 (robot_task 写, motor_task 读)
-    float ref_[4] = {};
-    bool enabled_ = false;
-    float power_limit_ = 80.0f;
-    float buffer_energy_ = 60.0f;
-    float measured_power_ = 0.0f;
+    TopicReader<ChassisCmdData>* cmd_reader_ = nullptr;
+    ChassisCmdData cmd_cache_{};
 };

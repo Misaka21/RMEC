@@ -1,10 +1,19 @@
 #include "motor_task.hpp"
+#include "chassis_motors.hpp"
+#include "gimbal_motors.hpp"
+#include "shoot_motors.hpp"
 #include "TaskManager.hpp"
 #include "sal_dwt.h"
 
-static ChassisMotors chassis_motors;
-static GimbalMotors  gimbal_motors;
-static ShootMotors   shoot_motors;
+// 新增 driver 头文件 (FlushAll 调用)
+#include "dji_driver.hpp"
+#include "dm_driver.hpp"
+#include "ht_driver.hpp"
+#include "lk_driver.hpp"
+
+static ChassisMotors chassis;
+static GimbalMotors  gimbal;
+static ShootMotors   shoot;
 
 static DwtInstance motor_dwt;
 
@@ -16,25 +25,25 @@ void MotorTaskStart() {
         .period_ms  = 1,
 
         .init_func = []() {
-            chassis_motors.Init();
-            gimbal_motors.Init();
-            shoot_motors.Init();
+            chassis.Init();
+            gimbal.Init();
+            shoot.Init();
             motor_dwt.DwtGetDeltaT();
         },
 
         .task_func = []() {
-            // 全部 1kHz
             float dt = motor_dwt.DwtGetDeltaT();
-            gimbal_motors.Tick(dt);
-            chassis_motors.Tick(dt);
-            shoot_motors.Tick(dt);
 
-            // 唯一 CAN 写者
+            // 全部 1kHz 更新
+            gimbal.Tick(dt);
+            chassis.Tick(dt);
+            shoot.Tick(dt);
+
+            // 统一 flush 所有驱动类型 (无实例时立即返回)
             DjiDriver::FlushAll();
+            DmDriver::FlushAll();
+            HtDriver::FlushAll();
+            LkDriver::FlushAll();
         },
     });
 }
-
-ChassisMotors& GetChassisMotors() { return chassis_motors; }
-GimbalMotors&  GetGimbalMotors()  { return gimbal_motors; }
-ShootMotors&   GetShootMotors()   { return shoot_motors; }

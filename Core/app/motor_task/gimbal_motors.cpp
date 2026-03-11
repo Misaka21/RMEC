@@ -5,7 +5,8 @@
 #include "can.h"
 
 void GimbalMotors::Init() {
-    // 订阅 ins_topic (在调度器启动前)
+    // 订阅 Topic
+    cmd_reader_ = gimbal_cmd_topic.Subscribe();
     ins_reader_ = ins_topic.Subscribe();
 
     // Yaw GM6020 — 角度→速度级联, 使用 IMU 反馈
@@ -69,33 +70,30 @@ void GimbalMotors::Init() {
     }
 }
 
-void GimbalMotors::SetYawAngle(float total_angle)  { yaw_ref_ = total_angle; }
-void GimbalMotors::SetPitchAngle(float angle)       { pitch_ref_ = angle; }
-void GimbalMotors::Enable()                          { enabled_ = true; }
-void GimbalMotors::Disable()                         { enabled_ = false; }
-
-float GimbalMotors::YawSingleRound() const {
-    if (!yaw_) return 0.0f;
-    return yaw_->Measure().angle_single_round;
-}
-
 void GimbalMotors::Tick(float dt) {
-    // 1. 读最新 IMU 数据到本地缓存 (ins_cache_ 同线程, FeedbackOverride 指向此处)
+    // 1. 读最新 IMU + 命令
     ins_reader_->Read(ins_cache_);
+    cmd_reader_->Read(cmd_cache_);
 
-    // 2. 从缓冲读取 ref, 设置使能状态
-    yaw_->SetRef(yaw_ref_);
-    pitch_->SetRef(pitch_ref_);
-
-    if (!enabled_) {
+    // 2. 模式处理
+    if (cmd_cache_.mode == GimbalMode::ZERO_FORCE) {
         yaw_->Disable();
         pitch_->Disable();
     } else {
         yaw_->Enable();
         pitch_->Enable();
+        yaw_->SetRef(cmd_cache_.yaw);
+        pitch_->SetRef(cmd_cache_.pitch);
     }
 
-    // 3. 一步更新 — disabled 时 Update 内部会 SetOutput(0) 归零 CAN 缓冲
+    // 3. 更新 PID (disabled 时 Update 内部写零)
     yaw_->Update(dt);
     pitch_->Update(dt);
+
+    // 4. 发布反馈 (gimbal_feed_topic 的唯一写者)
+    GimbalFeedData feed{};
+    feed.yaw_total        = ins_cache_.yaw_total;
+    feed.yaw_single_round = yaw_->Measure().angle_single_round;
+    feed.pitch            = ins_cache_.euler[1];
+    gimbal_feed_topic.Publish(feed);
 }

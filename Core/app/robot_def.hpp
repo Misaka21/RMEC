@@ -76,6 +76,11 @@ inline constexpr float REDUCTION_RATIO_WHEEL   = 19.0f;
 inline constexpr float ONE_BULLET_DELTA_ANGLE  = 36.0f;   // 度
 inline constexpr float REDUCTION_RATIO_LOADER  = 36.0f;
 
+// 摩擦轮默认转速 (deg/s, 需实测标定)
+inline constexpr float FRICTION_DEFAULT_SPEED  = 5000.0f;
+// 拨弹盘连发转速 (deg/s)
+inline constexpr float LOADER_BURST_SPEED      = 3600.0f;
+
 // ======================== 电机 CAN 句柄 ========================
 
 #define CHASSIS_CAN_HANDLE  hcan2
@@ -151,11 +156,11 @@ inline constexpr float LOADER_ANGLE_KI           = 0.0f;
 inline constexpr float LOADER_ANGLE_KD           = 0.0f;
 inline constexpr float LOADER_ANGLE_MAX_OUT      = 500.0f;
 
-// 摩擦轮 motor_id
-inline constexpr uint8_t FRICTION_L_MOTOR_ID     = 1;
-inline constexpr uint8_t FRICTION_R_MOTOR_ID     = 2;
+// 摩擦轮 motor_id (CAN2, 避开底盘 ID 1-4)
+inline constexpr uint8_t FRICTION_L_MOTOR_ID     = 5;
+inline constexpr uint8_t FRICTION_R_MOTOR_ID     = 6;
 // 拨弹盘 motor_id
-inline constexpr uint8_t LOADER_MOTOR_ID         = 3;
+inline constexpr uint8_t LOADER_MOTOR_ID         = 7;
 
 // ======================== IMU 安装方向 ========================
 

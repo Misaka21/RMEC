@@ -5,6 +5,9 @@
 #include "can.h"
 
 void ChassisMotors::Init() {
+    // 订阅命令 Topic
+    cmd_reader_ = chassis_cmd_topic.Subscribe();
+
     // M3508 速度环 PID 配置
     CascadePidConfig cascade_cfg{};
     cascade_cfg.loop_mode = loop_mode::SPEED;
@@ -38,52 +41,43 @@ void ChassisMotors::Init() {
     limiter_.Init(pl_cfg);
 }
 
-void ChassisMotors::SetWheelSpeeds(float lf, float rf, float lb, float rb) {
-    ref_[0] = lf;
-    ref_[1] = rf;
-    ref_[2] = lb;
-    ref_[3] = rb;
-}
-
-void ChassisMotors::Enable()  { enabled_ = true; }
-void ChassisMotors::Disable() { enabled_ = false; }
-
-void ChassisMotors::SetPowerFeedback(float limit_w, float buffer_j, float measured_w) {
-    power_limit_    = limit_w;
-    buffer_energy_  = buffer_j;
-    measured_power_ = measured_w;
-}
-
 void ChassisMotors::Tick(float dt) {
-    // 1. 从缓冲读取 ref, 设置使能状态
-    lf_->SetRef(ref_[0]);
-    rf_->SetRef(ref_[1]);
-    lb_->SetRef(ref_[2]);
-    rb_->SetRef(ref_[3]);
+    cmd_reader_->Read(cmd_cache_);
 
-    if (!enabled_) {
-        lf_->Disable(); rf_->Disable();
-        lb_->Disable(); rb_->Disable();
-    } else {
-        lf_->Enable(); rf_->Enable();
-        lb_->Enable(); rb_->Enable();
+    M* motors[4] = {lf_, rf_, lb_, rb_};
+
+    // ZERO_FORCE: 失能并写零到 CAN 缓冲
+    if (cmd_cache_.mode == ChassisMode::ZERO_FORCE) {
+        for (auto* m : motors) {
+            m->Disable();
+            m->Update(dt);
+        }
+        return;
     }
 
-    // 2. 两阶段 PID — disabled 时 ComputeOutput 返回 0, ApplyOutput 写零
-    M* motors[4] = {lf_, rf_, lb_, rb_};
+    // 麦轮分解: vx/vy/wz → 四轮转速
+    float vx = cmd_cache_.vx, vy = cmd_cache_.vy, wz = cmd_cache_.wz;
+    lf_->SetRef( vx - vy - wz);
+    rf_->SetRef( vx + vy + wz);
+    lb_->SetRef( vx + vy - wz);
+    rb_->SetRef( vx - vy + wz);
+
+    for (auto* m : motors)
+        m->Enable();
+
+    // 两阶段 PID + 功率限制
     PowerMotorState states[4] = {};
     for (int i = 0; i < 4; ++i) {
         states[i].pid_output    = motors[i]->ComputeOutput(dt);
         states[i].speed_rad     = motors[i]->Measure().speed_aps * DEGREE_2_RAD;
-        states[i].set_speed_rad = ref_[i] * DEGREE_2_RAD;
+        states[i].set_speed_rad = motors[i]->GetRef() * DEGREE_2_RAD;
         states[i].max_output    = CHASSIS_SPEED_MAX_OUT;
     }
 
-    // 3. 功率限制
-    limiter_.UpdateEnergyLoop(power_limit_, buffer_energy_, measured_power_, dt);
+    limiter_.UpdateEnergyLoop(cmd_cache_.power_limit, cmd_cache_.buffer_energy,
+                              cmd_cache_.measured_power, dt);
     limiter_.Limit(states, 4);
 
-    // 4. 应用输出 (disabled 时归零 CAN 缓冲)
     for (int i = 0; i < 4; ++i)
         motors[i]->ApplyOutput(states[i].pid_output);
 }

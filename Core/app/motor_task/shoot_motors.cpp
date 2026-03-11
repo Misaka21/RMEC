@@ -4,8 +4,8 @@
 #include "can.h"
 
 void ShootMotors::Init() {
-    // 初始化默认环路模式
-    loader_loop_mode_ = loop_mode::SPEED;
+    // 订阅命令 Topic
+    cmd_reader_ = shoot_cmd_topic.Subscribe();
 
     // 摩擦轮 M3508 — 速度环
     CascadePidConfig friction_cfg{};
@@ -61,51 +61,60 @@ void ShootMotors::Init() {
     }
 }
 
-void ShootMotors::SetFrictionSpeed(float left, float right) {
-    friction_ref_[0] = left;
-    friction_ref_[1] = right;
-}
-
-void ShootMotors::EnableFriction()  { friction_enabled_ = true; }
-void ShootMotors::DisableFriction() { friction_enabled_ = false; }
-
-void ShootMotors::SetLoaderAngle(float angle) {
-    loader_ref_ = angle;
-    loader_loop_mode_ = loop_mode::ANGLE_SPEED;
-}
-
-void ShootMotors::SetLoaderSpeed(float speed) {
-    loader_ref_ = speed;
-    loader_loop_mode_ = loop_mode::SPEED;
-}
-
-void ShootMotors::EnableLoader()  { loader_enabled_ = true; }
-void ShootMotors::DisableLoader() { loader_enabled_ = false; }
-
 void ShootMotors::Tick(float dt) {
-    // --- 摩擦轮 ---
-    friction_l_->SetRef(friction_ref_[0]);
-    friction_r_->SetRef(friction_ref_[1]);
+    cmd_reader_->Read(cmd_cache_);
 
-    if (!friction_enabled_) {
+    // ---- 摩擦轮 ----
+    if (cmd_cache_.friction_mode == FrictionMode::OFF) {
         friction_l_->Disable();
         friction_r_->Disable();
     } else {
         friction_l_->Enable();
         friction_r_->Enable();
+        friction_l_->SetRef( FRICTION_DEFAULT_SPEED);
+        friction_r_->SetRef(-FRICTION_DEFAULT_SPEED);  // 对转
     }
-    // disabled 时 Update 内部会 SetOutput(0) 归零 CAN 缓冲
     friction_l_->Update(dt);
     friction_r_->Update(dt);
 
-    // --- 拨弹盘 ---
-    loader_->GetController().SetLoopMode(loader_loop_mode_);
-    loader_->SetRef(loader_ref_);
-
-    if (!loader_enabled_) {
+    // ---- 拨弹盘 ----
+    switch (cmd_cache_.load_mode) {
+    case LoaderMode::STOP:
         loader_->Disable();
-    } else {
+        loader_angle_target_ = loader_->Measure().total_angle;  // 记录当前位置
+        break;
+
+    case LoaderMode::REVERSE:
         loader_->Enable();
+        loader_->GetController().SetLoopMode(loop_mode::SPEED);
+        loader_->SetRef(-LOADER_BURST_SPEED);
+        break;
+
+    case LoaderMode::SINGLE:
+    case LoaderMode::TRIPLE: {
+        loader_->Enable();
+        loader_->GetController().SetLoopMode(loop_mode::ANGLE_SPEED);
+        float bullets = (cmd_cache_.load_mode == LoaderMode::SINGLE) ? 1.0f : 3.0f;
+        // 首次进入: 设定角度目标 (当前位置 + N 发弹丸角度)
+        float target = loader_->Measure().total_angle
+                     + bullets * ONE_BULLET_DELTA_ANGLE * REDUCTION_RATIO_LOADER;
+        if (loader_angle_target_ < target)
+            loader_angle_target_ = target;
+        loader_->SetRef(loader_angle_target_);
+        break;
     }
+
+    case LoaderMode::BURST:
+        loader_->Enable();
+        loader_->GetController().SetLoopMode(loop_mode::SPEED);
+        loader_->SetRef(LOADER_BURST_SPEED);
+        break;
+    }
+
+    // 热量保护: 剩余热量为 0 则停转
+    if (cmd_cache_.rest_heat == 0 && cmd_cache_.load_mode != LoaderMode::REVERSE) {
+        loader_->Disable();
+    }
+
     loader_->Update(dt);
 }

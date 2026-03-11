@@ -42,12 +42,14 @@ enum class BulletSpeed  : uint8_t { SMALL_15, SMALL_18, SMALL_30 };
 // ======================== CMD → 子系统 命令 ========================
 
 struct ChassisCmdData {
-    float vx           = 0;
-    float vy           = 0;
-    float wz           = 0;
-    float offset_angle = 0;
-    ChassisMode mode   = ChassisMode::ZERO_FORCE;
-    int speed_buff     = 100;
+    float vx             = 0;
+    float vy             = 0;
+    float wz             = 0;
+    float offset_angle   = 0;
+    ChassisMode mode     = ChassisMode::ZERO_FORCE;
+    float power_limit    = 80.0f;    // 裁判系统功率上限 (W)
+    float buffer_energy  = 60.0f;    // 缓冲能量 (J)
+    float measured_power = 0.0f;     // 实测底盘功率 (W)
 };
 
 struct GimbalCmdData {
