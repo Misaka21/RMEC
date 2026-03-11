@@ -67,6 +67,13 @@ public:
         : driver_(drv_cfg) {}
 
     // ---- 设定值 ----
+    /// 设置目标值 + 环路模式（显式声明意图，防止模式/值错配）
+    /// 仅当 Controller 支持 SetLoopMode 时可用（如 CascadePid）
+    void SetTarget(uint8_t mode, float ref) {
+        controller_.SetLoopMode(mode);
+        ref_ = ref;
+    }
+    /// 设置目标值（不切换模式，适用于模式固定的电机）
     void SetRef(float ref) { ref_ = ref; }
     float GetRef() const { return ref_; }
 

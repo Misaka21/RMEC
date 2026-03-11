@@ -86,28 +86,25 @@ void ShootMotors::Tick(float dt) {
 
     case LoaderMode::REVERSE:
         loader_->Enable();
-        loader_->GetController().SetLoopMode(loop_mode::SPEED);
-        loader_->SetRef(-LOADER_BURST_SPEED);
+        loader_->SetTarget(loop_mode::SPEED, -LOADER_BURST_SPEED);
         break;
 
     case LoaderMode::SINGLE:
     case LoaderMode::TRIPLE: {
         loader_->Enable();
-        loader_->GetController().SetLoopMode(loop_mode::ANGLE_SPEED);
         float bullets = (cmd_cache_.load_mode == LoaderMode::SINGLE) ? 1.0f : 3.0f;
         // 首次进入: 设定角度目标 (当前位置 + N 发弹丸角度)
         float target = loader_->Measure().total_angle
                      + bullets * ONE_BULLET_DELTA_ANGLE * REDUCTION_RATIO_LOADER;
         if (loader_angle_target_ < target)
             loader_angle_target_ = target;
-        loader_->SetRef(loader_angle_target_);
+        loader_->SetTarget(loop_mode::ANGLE_SPEED, loader_angle_target_);
         break;
     }
 
     case LoaderMode::BURST:
         loader_->Enable();
-        loader_->GetController().SetLoopMode(loop_mode::SPEED);
-        loader_->SetRef(LOADER_BURST_SPEED);
+        loader_->SetTarget(loop_mode::SPEED, LOADER_BURST_SPEED);
         break;
     }
 
