@@ -18,7 +18,8 @@ module/
 ├── algorithm/             # PID 控制器, 四元数 EKF, AHRS 数学工具
 ├── imu/                   # BMI088 驱动 + INS 姿态解算
 ├── motor/                 # Motor<Driver, Controller> 电机系统
-└── remote/                # Remote<Protocol> 遥控器模板
+├── remote/                # Remote<Protocol> 遥控器模板
+└── daemon/                # DaemonInstance 健康监测 (FSM + 时间戳模型)
 ```
 
 ## 通用组件
