@@ -58,6 +58,16 @@ inline constexpr float IMU_PRE_G_NORM           = 9.8909f;
 
 #define RC_UART_HANDLE      huart3
 
+// ======================== 视觉通信 ========================
+
+// 传输方式 (二选一, 默认 UART)
+#define VISION_USE_UART
+// #define VISION_USE_VCP
+
+#ifdef VISION_USE_UART
+#define VISION_UART_HANDLE  huart1
+#endif
+
 // ======================== 云台 ========================
 
 inline constexpr uint16_t YAW_CHASSIS_ALIGN_ECD     = 2711;   // TODO: 实测标定

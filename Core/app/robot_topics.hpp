@@ -3,6 +3,7 @@
 #include "topic.hpp"
 #include "ins_data.hpp"
 #include "dt7_data.hpp"
+#include "vision_data.hpp"
 
 #include <cstdint>
 #include <type_traits>
@@ -136,6 +137,9 @@ inline Topic<ShootCmdData>    shoot_cmd_topic;
 inline Topic<ChassisFeedData> chassis_feed_topic;
 inline Topic<GimbalFeedData>  gimbal_feed_topic;
 inline Topic<ShootFeedData>   shoot_feed_topic;
+
+// 视觉通信接收数据 (ISR 回调发布)
+inline Topic<vision::VisionRxData> vision_topic;
 
 // 双板通信接收数据 (100 Hz, comm_task 发布)
 inline Topic<BoardCommRxData> board_comm_topic;
