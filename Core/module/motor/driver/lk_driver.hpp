@@ -18,7 +18,8 @@ inline constexpr int16_t I_MAX           =  2000;
 /// LK 电机驱动配置
 struct LkDriverConfig {
     CAN_HandleTypeDef* can_handle = nullptr;
-    uint8_t motor_id = 1;  // 电机 ID, 1-4
+    uint8_t motor_id = 1;          // 电机 ID, 1-4
+    float max_current = 1.0f;      // 最大电流 (A), 查电机手册填写
 };
 
 /// LK (瓴控) 电机驱动（多电机批量发送，类似 DJI）
@@ -39,7 +40,7 @@ public:
 
     explicit LkDriver(const LkDriverConfig& cfg);
 
-    /// 设置控制输出（电流/力矩值），写入 TxGroup 缓冲区
+    /// 设置控制输出（安培），Driver 内部换算为 CAN 原始值
     void SetOutput(float output);
 
     /// 获取反馈数据
@@ -73,4 +74,6 @@ private:
     uint8_t group_idx_ = 0;
     uint8_t msg_offset_ = 0;    // 帧内字节偏移 (0/2/4/6)
     uint16_t online_cnt_ = OFFLINE_THRESHOLD;
+    float raw_per_amp_ = 1.0f;  // 安培→CAN 原始值换算因子
+    float max_current_ = 1.0f;  // 最大电流 (A)
 };

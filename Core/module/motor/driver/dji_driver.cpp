@@ -10,6 +10,23 @@ DjiDriver::TxGroup DjiDriver::tx_groups_[GROUP_COUNT]{};
 DjiDriver::DjiDriver(const DjiDriverConfig& cfg)
     : motor_type_(cfg.motor_type)
 {
+    // 物理量→原始值换算
+    using namespace dji_motor;
+    switch (motor_type_) {
+    case DjiMotorType::M3508:
+        physical_to_raw_ = M3508_RAW_PER_AMP;
+        max_physical_    = M3508_MAX_CURRENT;
+        break;
+    case DjiMotorType::M2006:
+        physical_to_raw_ = M2006_RAW_PER_AMP;
+        max_physical_    = M2006_MAX_CURRENT;
+        break;
+    case DjiMotorType::GM6020:
+        physical_to_raw_ = GM6020_RAW_PER_VOLT;
+        max_physical_    = GM6020_MAX_VOLTAGE;
+        break;
+    }
+
     // 计算分组
     SetupGrouping(cfg);
 
@@ -80,9 +97,10 @@ void DjiDriver::SetupGrouping(const DjiDriverConfig& cfg) {
     }
 }
 
-// ---- 设置输出 ----
+// ---- 设置输出 (物理量 → CAN 原始值) ----
 void DjiDriver::SetOutput(float output) {
-    auto value = static_cast<int16_t>(output);
+    output = Clamp(output, -max_physical_, max_physical_);
+    auto value = static_cast<int16_t>(output * physical_to_raw_);
     auto& group = tx_groups_[group_idx_];
     group.data[msg_offset_]     = static_cast<uint8_t>(value >> 8);
     group.data[msg_offset_ + 1] = static_cast<uint8_t>(value & 0xFF);

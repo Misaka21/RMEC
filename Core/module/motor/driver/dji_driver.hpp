@@ -17,6 +17,16 @@ enum class DjiMotorType : uint8_t {
     GM6020,
 };
 
+/// DJI 电机物理参数（SetOutput 输入单位: M3508/M2006 为安培, GM6020 为伏特）
+namespace dji_motor {
+inline constexpr float M3508_MAX_CURRENT  = 20.0f;             // A
+inline constexpr float M3508_RAW_PER_AMP  = 16384.0f / 20.0f;  // ≈819.2
+inline constexpr float M2006_MAX_CURRENT  = 10.0f;             // A
+inline constexpr float M2006_RAW_PER_AMP  = 10000.0f / 10.0f;  // =1000.0
+inline constexpr float GM6020_MAX_VOLTAGE = 24.0f;             // V
+inline constexpr float GM6020_RAW_PER_VOLT = 30000.0f / 24.0f; // =1250.0
+} // namespace dji_motor
+
 /// DJI 电机驱动配置
 struct DjiDriverConfig {
     DjiMotorType motor_type = DjiMotorType::M3508;
@@ -46,7 +56,7 @@ public:
 
     explicit DjiDriver(const DjiDriverConfig& cfg);
 
-    /// 设置控制输出（电流/电压值），写入对应 TxGroup 缓冲区
+    /// 设置控制输出（M3508/M2006: 安培, GM6020: 伏特），Driver 内部换算为 CAN 原始值
     void SetOutput(float output);
 
     /// 获取反馈数据
@@ -92,4 +102,6 @@ private:
     uint8_t group_idx_ = 0;                // 所属 TxGroup 索引
     uint8_t msg_offset_ = 0;               // 帧内字节偏移 (0/2/4/6)
     uint16_t online_cnt_ = OFFLINE_THRESHOLD;  // 初始视为离线
+    float physical_to_raw_ = 1.0f;         // 物理量→CAN 原始值换算因子
+    float max_physical_ = 0.0f;            // 物理量上限 (用于 Clamp)
 };

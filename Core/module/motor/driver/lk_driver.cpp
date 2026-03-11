@@ -7,6 +7,10 @@ LkDriver::TxGroup LkDriver::tx_groups_[GROUP_COUNT]{};
 
 // ---- 构造函数 ----
 LkDriver::LkDriver(const LkDriverConfig& cfg) {
+    // 物理量→原始值换算
+    max_current_ = cfg.max_current;
+    raw_per_amp_ = static_cast<float>(lk_motor::I_MAX) / max_current_;
+
     // 计算分组和帧内偏移
     uint8_t id = cfg.motor_id;  // 1-based
     msg_offset_ = (id - 1) * 2;
@@ -39,11 +43,10 @@ LkDriver::LkDriver(const LkDriverConfig& cfg) {
     tx_groups_[group_idx_].enabled = true;
 }
 
-// ---- 设置输出 ----
+// ---- 设置输出 (安培 → CAN 原始值) ----
 void LkDriver::SetOutput(float output) {
-    auto value = static_cast<int16_t>(Clamp(output,
-        static_cast<float>(lk_motor::I_MIN),
-        static_cast<float>(lk_motor::I_MAX)));
+    output = Clamp(output, -max_current_, max_current_);
+    auto value = static_cast<int16_t>(output * raw_per_amp_);
 
     auto& group = tx_groups_[group_idx_];
 
