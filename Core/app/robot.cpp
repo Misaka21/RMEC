@@ -9,6 +9,7 @@
 #include "daemon_task.hpp"
 #include "comm_task.hpp"
 #include "vision_task.hpp"
+#include "robot_task.hpp"
 
 // Module 层 (编译验证)
 #include "motor.hpp"
@@ -52,6 +53,7 @@ extern "C" void RobotInit() {
     RemoteInit();
     MotorTaskStart();
     VisionTaskStart();
+    RobotTaskStart();
 #elif defined(GIMBAL_BOARD)
     // 云台板: IMU + 遥控器 + 云台/发射电机 + 双板通信 + 视觉
     InsTaskStart();
@@ -59,11 +61,11 @@ extern "C" void RobotInit() {
     MotorTaskStart();
     CommTaskStart();
     VisionTaskStart();
+    RobotTaskStart();
 #elif defined(CHASSIS_BOARD)
     // 底盘板: 底盘电机 + 双板通信 (IMU/遥控器数据由云台板转发)
     MotorTaskStart();
     CommTaskStart();
 #endif
     DaemonTaskStart();
-    // 未来: RobotTaskStart(), UiTaskStart() ...
 }
