@@ -33,6 +33,7 @@ void OnProjectLoad (void) {
   //
   // User settings
   //
+  Edit.SysVar (VAR_HSS_SPEED, FREQ_500_HZ);
   File.Open ("/Users/david/Documents/Huorui/RM2026/OSS/powerful_framework-master/build/pwf_fw.elf");
 }
 
