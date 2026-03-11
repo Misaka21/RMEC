@@ -12,8 +12,6 @@
 
 > 基于 [basic_framework](https://gitee.com/hnuyuelurm/basic_framework) 的 C++ 现代化重构。零虚函数模板组合设计、SeqLock 无锁发布订阅、编译期接口契约检查——在保持嵌入式资源约束的前提下，将现代 C++ 的类型安全与零开销抽象引入 RoboMaster 电控开发。
 
-[TOC]
-
 ---
 
 ## 1 项目概述
