@@ -7,6 +7,8 @@
 #include <cstring>
 #include <type_traits>
 
+#define CANCOMM_COMPILER_BARRIER() __asm volatile("" ::: "memory")
+
 struct CanCommConfig {
     CAN_HandleTypeDef* can_handle;
     uint16_t base_tx_id;         // 发送基础 ID (连续分配 kTxFrames 个)
@@ -25,8 +27,15 @@ public:
     /// 切片发送 N 帧 (task context 调用)
     void Send(const TxData& data);
 
-    /// 返回最新完整接收数据引用 (ISR 异步更新, 多帧时由 staging 保证拼装完整性)
-    const RxData& Recv() const { return rx_buf_; }
+    /// SeqLock 读取最新完整接收数据, 返回 true 表示读到一致快照
+    bool Recv(RxData& out) const {
+        uint32_t s1 = seq_;
+        CANCOMM_COMPILER_BARRIER();
+        if (s1 & 1u) return false;   // 写端正在更新
+        out = rx_buf_;
+        CANCOMM_COMPILER_BARRIER();
+        return s1 == seq_;
+    }
 
     /// Daemon 在线判断
     bool IsOnline() const { return daemon_ && daemon_->IsOnline(); }
@@ -38,10 +47,12 @@ private:
 
     sal::CanInstance* instances_[kInstances] = {};
 
-    // 接收: ISR 逐帧写 staging, 全部到齐后整体拷贝到 buf
+    // 接收: ISR 逐帧写 staging, 全部到齐后 SeqLock 提交到 buf
     RxData rx_staging_{};
     RxData rx_buf_{};
-    uint8_t rx_count_ = 0;
+    uint32_t rx_mask_ = 0;
+    static constexpr uint32_t kFullMask = (1u << kRxFrames) - 1;
+    volatile uint32_t seq_ = 0;
 
     daemon::DaemonInstance* daemon_ = nullptr;
 };
@@ -62,16 +73,27 @@ CanComm<TxData, RxData>::CanComm(const CanCommConfig& cfg) {
 
         if (i < kRxFrames) {
             can_cfg.rx_cbk = [this, i](uint8_t /*len*/) {
-                // ISR: 逐帧写入 staging 缓冲
+                // ISR: 帧 0 到达意味着新一轮, 清除未完成的旧数据
+                if (i == 0 && rx_mask_ != 0) {
+                    std::memset(&rx_staging_, 0, sizeof(rx_staging_));
+                    rx_mask_ = 0;
+                }
+
+                // 逐帧写入 staging 缓冲
                 uint8_t* dst = reinterpret_cast<uint8_t*>(&rx_staging_) + i * 8;
                 uint8_t n = (i == kRxFrames - 1)
                     ? static_cast<uint8_t>(sizeof(RxData) - i * 8) : 8;
                 std::memcpy(dst, instances_[i]->RxData(), n);
 
-                // 全部帧到齐: 整体拷贝到可读缓冲
-                if (++rx_count_ >= kRxFrames) {
+                // 位掩码记录, 全部帧到齐: SeqLock 提交
+                rx_mask_ |= (1u << i);
+                if (rx_mask_ == kFullMask) {
+                    ++seq_;
+                    CANCOMM_COMPILER_BARRIER();
                     rx_buf_ = rx_staging_;
-                    rx_count_ = 0;
+                    CANCOMM_COMPILER_BARRIER();
+                    ++seq_;
+                    rx_mask_ = 0;
                     if (daemon_) daemon_->Reload();
                 }
             };

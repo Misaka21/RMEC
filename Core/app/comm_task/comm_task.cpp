@@ -31,8 +31,10 @@ void CommTaskStart() {
             // TODO: 填入实际数据
             comm->Send(tx);
 
-            // 接收: 发布到 Topic 供其他模块消费
-            board_comm_topic.Publish(comm->Recv());
+            // 接收: SeqLock 一致时才发布, 避免撕裂数据
+            BoardCommRxData rx{};
+            if (comm->Recv(rx))
+                board_comm_topic.Publish(rx);
         },
     });
 }
