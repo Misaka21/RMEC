@@ -95,7 +95,7 @@ static_assert(std::is_trivially_copyable_v<ShootFeedData>);
 // IMU 姿态 (1 kHz, ins_task 发布)
 inline Topic<InsData> ins_topic;
 
-// 遥控器 (~70 Hz, UART ISR 回调发布)
+// 遥控器 (~70 Hz, ISR 回调发布)
 inline Topic<remote::Dt7Data> remote_topic;
 
 // CMD → 子系统 命令 (200 Hz, robot_cmd 发布)

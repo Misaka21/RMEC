@@ -6,11 +6,14 @@
 
 namespace remote {
 
+// Cortex-M4 单核无乱序执行, 仅需阻止编译器重排
+#define REMOTE_COMPILER_BARRIER() __asm volatile("" ::: "memory")
+
 // ======================== 配置 ========================
 
 struct RemoteConfig {
     UART_HandleTypeDef* uart_handle = nullptr;
-    uint16_t offline_threshold = 100;   // Tick() 周期数, 超过视为离线
+    uint16_t offline_threshold = 100;   // app bridge 离线判定阈值（周期数）
 };
 
 // ======================== 编译期协议契约检查 ========================
@@ -36,12 +39,12 @@ constexpr bool CheckProtocolInterface() {
 /// 遥控器模板类, Protocol 为编译期策略 (零虚函数)
 ///
 /// UART ISR 驱动的数据源:
-///   ISR → Decode → publish 回调 (由 app 层注入, 发布到 Topic)
+///   ISR → Decode → 更新内部快照
 ///
 /// App 层只需:
-///   1. 构造时注入 publish 回调
-///   2. 定期调用 Tick() 做离线检测
-///   3. 消费者订阅 Topic 即可
+///   1. 初始化 Remote 实例
+///   2. 在 bridge/pump 中调用 ReadSnapshot()
+///   3. 按需发布 Topic（单写者由 app 保证）
 
 template <typename Protocol>
 class Remote {
@@ -49,13 +52,10 @@ class Remote {
 
 public:
     using Data = typename Protocol::Data;
-    using PublishFn = void(*)(const Data&);
+    using PublishCallback = void(*)(const Data&);
 
-    Remote(const RemoteConfig& cfg, PublishFn publish)
-        : publish_(publish),
-          offline_cnt_(cfg.offline_threshold),
-          offline_threshold_(cfg.offline_threshold)
-    {
+    explicit Remote(const RemoteConfig& cfg, PublishCallback on_publish = nullptr) {
+        on_publish_ = on_publish;
         sal::UartInstance::UartConfig uart_cfg{};
         uart_cfg.handle  = cfg.uart_handle;
         uart_cfg.rx_size = Protocol::FRAME_SIZE;
@@ -68,40 +68,51 @@ public:
         uart_->UartRestartRecv();
     }
 
-    /// 在线判断
-    bool IsOnline() const { return offline_cnt_ < offline_threshold_; }
+    /// 读取一致快照（无锁，可能因并发写返回 false）
+    bool ReadSnapshot(Data& out, uint32_t* seq_out = nullptr) const {
+        uint32_t s1 = seq_;
+        REMOTE_COMPILER_BARRIER();
+        if (s1 & 1u) return false;  // ISR 正在写
+        out = data_;
+        REMOTE_COMPILER_BARRIER();
+        uint32_t s2 = seq_;
+        if (s1 != s2) return false; // 读取被打断
+        if (seq_out) *seq_out = s1;
+        return true;
+    }
 
-    /// 定期调用: 递增离线计数, 超时后清零数据并重启 UART
-    void Tick() {
-        if (offline_cnt_ < offline_threshold_) {
-            offline_cnt_++;
-        } else if (!was_offline_) {
-            Protocol::Reset(data_);
-            last_data_ = data_;
-            if (publish_) publish_(data_);   // 发布清零后的数据
-            uart_->UartRestartRecv();
-            was_offline_ = true;
-        }
+    /// 最近一次成功写入的序号（偶数）
+    uint32_t SnapshotSeq() const { return seq_; }
+
+    /// bridge 触发离线恢复时可调用
+    void RestartRx() {
+        if (uart_) uart_->UartRestartRecv();
     }
 
 private:
     /// UART 接收回调 (ISR 上下文)
     void OnReceive(uint8_t* buf, uint16_t len) {
         if (len != Protocol::FRAME_SIZE) return;
-        Protocol::Decode(buf, data_, last_data_);
-        last_data_ = data_;
-        if (publish_) publish_(data_);       // ISR 中直接发布
-        offline_cnt_ = 0;
-        was_offline_ = false;
+        Data curr{};
+        Protocol::Decode(buf, curr, last_data_);
+        last_data_ = curr;
+
+        ++seq_;                 // odd: writing
+        REMOTE_COMPILER_BARRIER();
+        data_ = curr;
+        REMOTE_COMPILER_BARRIER();
+        ++seq_;                 // even: write done
+
+        if (on_publish_) on_publish_(curr);
     }
 
-    PublishFn publish_;
     sal::UartInstance* uart_;
+    PublishCallback on_publish_ = nullptr;
     Data data_{};
     Data last_data_{};
-    uint16_t offline_cnt_;
-    uint16_t offline_threshold_;
-    bool was_offline_ = true;
+    volatile uint32_t seq_ = 0;
 };
+
+#undef REMOTE_COMPILER_BARRIER
 
 } // namespace remote

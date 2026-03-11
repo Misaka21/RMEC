@@ -14,9 +14,13 @@ extern "C" {
 /// 由 RobotInit() 调用, 必须在调度器启动前完成
 void RemoteInit();
 
+/// 离线检测: 比较快照序号, 超时则发布零帧并重启接收
+/// 建议由 cmd_task 周期调用（不新增独立任务）
+void RemoteOfflineCheck();
+
 #ifdef __cplusplus
 }
 #endif
 
-/// 获取遥控器实例, 供 cmd_task 调用 Tick() / IsOnline() / GetData()
+/// 获取遥控器实例（必要时用于调试）
 Dt7Remote* GetRemote();
