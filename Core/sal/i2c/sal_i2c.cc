@@ -119,9 +119,6 @@ namespace sal {
 
     // ========================= HAL回调函数 =========================
 
-    /**
-     * @brief I2C Mem写入完成回调
-     */
     void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c)
     {
         for (auto &ins : I2cInstance::instance_list_)
@@ -134,9 +131,6 @@ namespace sal {
         }
     }
 
-    /**
-     * @brief I2C Mem读取完成回调
-     */
     void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
     {
         for (auto &ins : I2cInstance::instance_list_)
@@ -149,9 +143,6 @@ namespace sal {
         }
     }
 
-    /**
-     * @brief I2C Master发送完成回调
-     */
     void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c)
     {
         for (auto &ins : I2cInstance::instance_list_)
@@ -164,9 +155,6 @@ namespace sal {
         }
     }
 
-    /**
-     * @brief I2C Master接收完成回调
-     */
     void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c)
     {
         for (auto &ins : I2cInstance::instance_list_)
@@ -179,9 +167,6 @@ namespace sal {
         }
     }
 
-    /**
-     * @brief I2C错误回调
-     */
     void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
     {
         for (auto &ins : I2cInstance::instance_list_)
@@ -195,3 +180,22 @@ namespace sal {
     }
 
 } // namespace sal
+
+// extern "C" 转发: 覆盖 HAL __weak 符号, 转发到 namespace sal 内的实现
+extern "C" {
+void HAL_I2C_MemTxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    sal::HAL_I2C_MemTxCpltCallback(hi2c);
+}
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    sal::HAL_I2C_MemRxCpltCallback(hi2c);
+}
+void HAL_I2C_MasterTxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    sal::HAL_I2C_MasterTxCpltCallback(hi2c);
+}
+void HAL_I2C_MasterRxCpltCallback(I2C_HandleTypeDef *hi2c) {
+    sal::HAL_I2C_MasterRxCpltCallback(hi2c);
+}
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
+    sal::HAL_I2C_ErrorCallback(hi2c);
+}
+}
