@@ -94,17 +94,30 @@ static_assert(std::is_trivially_copyable_v<ShootFeedData>);
 
 // ======================== 双板通信数据 ========================
 
+// 按物理方向定义, 两板共用同一份代码
 #pragma pack(1)
-struct BoardCommTxData {
-    uint8_t placeholder[8];  // 用户填入实际字段
+struct Gimbal2ChassisData {
+    uint8_t placeholder[8];  // TODO: 填入实际字段 (如底盘命令)
 };
-struct BoardCommRxData {
-    uint8_t placeholder[8];  // 用户填入实际字段
+struct Chassis2GimbalData {
+    uint8_t placeholder[8];  // TODO: 填入实际字段 (如功率反馈)
 };
 #pragma pack()
 
-static_assert(std::is_trivially_copyable_v<BoardCommTxData>);
-static_assert(std::is_trivially_copyable_v<BoardCommRxData>);
+static_assert(std::is_trivially_copyable_v<Gimbal2ChassisData>);
+static_assert(std::is_trivially_copyable_v<Chassis2GimbalData>);
+
+// 板级自动切换 Tx/Rx 方向, 改 define 即全切
+#if defined(GIMBAL_BOARD)
+using BoardCommTxData = Gimbal2ChassisData;
+using BoardCommRxData = Chassis2GimbalData;
+#elif defined(CHASSIS_BOARD)
+using BoardCommTxData = Chassis2GimbalData;
+using BoardCommRxData = Gimbal2ChassisData;
+#else // ONE_BOARD — 不使用双板通信, 保留类型定义供编译通过
+using BoardCommTxData = Gimbal2ChassisData;
+using BoardCommRxData = Chassis2GimbalData;
+#endif
 
 // ======================== Topic 实例 ========================
 

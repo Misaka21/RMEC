@@ -165,8 +165,21 @@ inline constexpr uint8_t LOADER_MOTOR_ID         = 7;
 // ======================== 双板通信 ========================
 
 #define COMM_CAN_HANDLE  hcan1
-inline constexpr uint16_t COMM_BASE_TX_ID = 0x100;
-inline constexpr uint16_t COMM_BASE_RX_ID = 0x110;
+// 物理 ID 段: 云台→底盘 0x100~, 底盘→云台 0x110~
+inline constexpr uint16_t COMM_GIMBAL2CHASSIS_BASE_ID = 0x100;
+inline constexpr uint16_t COMM_CHASSIS2GIMBAL_BASE_ID = 0x110;
+
+// 板级自动切换 Tx/Rx ID, 改 define 即全切
+#if defined(GIMBAL_BOARD)
+inline constexpr uint16_t COMM_BASE_TX_ID = COMM_GIMBAL2CHASSIS_BASE_ID;
+inline constexpr uint16_t COMM_BASE_RX_ID = COMM_CHASSIS2GIMBAL_BASE_ID;
+#elif defined(CHASSIS_BOARD)
+inline constexpr uint16_t COMM_BASE_TX_ID = COMM_CHASSIS2GIMBAL_BASE_ID;
+inline constexpr uint16_t COMM_BASE_RX_ID = COMM_GIMBAL2CHASSIS_BASE_ID;
+#else // ONE_BOARD — 不使用, 保留定义供编译通过
+inline constexpr uint16_t COMM_BASE_TX_ID = COMM_GIMBAL2CHASSIS_BASE_ID;
+inline constexpr uint16_t COMM_BASE_RX_ID = COMM_CHASSIS2GIMBAL_BASE_ID;
+#endif
 
 // ======================== IMU 安装方向 ========================
 
