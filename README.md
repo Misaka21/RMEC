@@ -59,29 +59,24 @@ RMEC 针对上述痛点，以 C++17 重新设计了整套架构。
 ### 2.1 三层结构
 
 ```mermaid
-block-beta
-    columns 1
-    block:App["App Layer"]
-        columns 4
-        A1["robot.cpp"] A2["ins_task"] A3["remote_task"] A4["motor_task"]
-        A5["daemon_task"] A6["comm_task"] A7["robot_def.hpp"] A8["robot_topics.hpp"]
+graph TD
+    subgraph App["App Layer"]
+        direction LR
+        A1(robot.cpp) ~~~ A2(ins_task) ~~~ A3(remote_task) ~~~ A4(motor_task)
+        A5(daemon_task) ~~~ A6(comm_task) ~~~ A7(robot_def.hpp) ~~~ A8(robot_topics.hpp)
     end
-    block:Module["Module Layer"]
-        columns 4
-        M1["Motor&lt;D,C&gt;"] M2["Bmi088 / Ins"] M3["Remote&lt;P&gt;"] M4["Daemon"]
-        M5["CanComm&lt;Tx,Rx&gt;"] M6["PidController"] M7["QuaternionEkf"] M8["PowerLimiter / Topic&lt;T&gt;"]
+    subgraph Module["Module Layer"]
+        direction LR
+        M1("Motor⟨D,C⟩") ~~~ M2(Bmi088 / Ins) ~~~ M3("Remote⟨P⟩") ~~~ M4(Daemon)
+        M5("CanComm⟨Tx,Rx⟩") ~~~ M6(PidController) ~~~ M7(QuaternionEkf) ~~~ M8("PowerLimiter / Topic⟨T⟩")
     end
-    block:SAL["SAL — Software Abstraction Layer"]
-        columns 4
-        S1["CanInstance"] S2["UartInstance"] S3["SpiInstance"] S4["I2cInstance"]
-        S5["GpioInstance"] S6["PwmInstance"] S7["DwtInstance"] S8["Flash / USB / Log"]
-    end
-    block:HAL["HAL / CMSIS / FreeRTOS / CMSIS-DSP"]
-        columns 1
-        space
+    subgraph SAL["SAL — Software Abstraction Layer"]
+        direction LR
+        S1(CanInstance) ~~~ S2(UartInstance) ~~~ S3(SpiInstance) ~~~ S4(I2cInstance)
+        S5(GpioInstance) ~~~ S6(PwmInstance) ~~~ S7(DwtInstance) ~~~ S8("Flash / USB / Log / TaskManager")
     end
 
-    App --> Module --> SAL --> HAL
+    App --> Module --> SAL --> HAL["HAL / CMSIS / FreeRTOS / CMSIS-DSP"]
 
     style App fill:#4a90d9,color:#fff
     style Module fill:#7b68ee,color:#fff
