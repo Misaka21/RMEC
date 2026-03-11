@@ -6,6 +6,10 @@
 // #define CHASSIS_BOARD
 // #define GIMBAL_BOARD
 
+#if !defined(ONE_BOARD) && !defined(CHASSIS_BOARD) && !defined(GIMBAL_BOARD)
+#error "No board type defined! Define exactly one: ONE_BOARD, CHASSIS_BOARD, or GIMBAL_BOARD."
+#endif
+
 #if (defined(ONE_BOARD) && defined(CHASSIS_BOARD)) || \
     (defined(ONE_BOARD) && defined(GIMBAL_BOARD))  || \
     (defined(CHASSIS_BOARD) && defined(GIMBAL_BOARD))

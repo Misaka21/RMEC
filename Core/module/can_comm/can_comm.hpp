@@ -25,7 +25,7 @@ public:
     /// 切片发送 N 帧 (task context 调用)
     void Send(const TxData& data);
 
-    /// 返回最新接收数据引用 (ISR 异步更新)
+    /// 返回最新完整接收数据引用 (ISR 异步更新, 多帧时由 staging 保证拼装完整性)
     const RxData& Recv() const { return rx_buf_; }
 
     /// Daemon 在线判断
@@ -37,7 +37,12 @@ private:
     static constexpr int kInstances = kTxFrames > kRxFrames ? kTxFrames : kRxFrames;
 
     sal::CanInstance* instances_[kInstances] = {};
+
+    // 接收: ISR 逐帧写 staging, 全部到齐后整体拷贝到 buf
+    RxData rx_staging_{};
     RxData rx_buf_{};
+    uint8_t rx_count_ = 0;
+
     daemon::DaemonInstance* daemon_ = nullptr;
 };
 
@@ -57,11 +62,18 @@ CanComm<TxData, RxData>::CanComm(const CanCommConfig& cfg) {
 
         if (i < kRxFrames) {
             can_cfg.rx_cbk = [this, i](uint8_t /*len*/) {
-                uint8_t* dst = reinterpret_cast<uint8_t*>(&rx_buf_) + i * 8;
+                // ISR: 逐帧写入 staging 缓冲
+                uint8_t* dst = reinterpret_cast<uint8_t*>(&rx_staging_) + i * 8;
                 uint8_t n = (i == kRxFrames - 1)
                     ? static_cast<uint8_t>(sizeof(RxData) - i * 8) : 8;
                 std::memcpy(dst, instances_[i]->RxData(), n);
-                if (daemon_) daemon_->Reload();
+
+                // 全部帧到齐: 整体拷贝到可读缓冲
+                if (++rx_count_ >= kRxFrames) {
+                    rx_buf_ = rx_staging_;
+                    rx_count_ = 0;
+                    if (daemon_) daemon_->Reload();
+                }
             };
         }
 
