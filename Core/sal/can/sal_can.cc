@@ -64,14 +64,17 @@ namespace sal
             TxQueueFront(fifo_bind_);
             return true;
         }
-        // fifo不为空,加入队列等待
-        TIMEOUT(
+        // fifo不为空,在超时时间内等待并入队
+        float tstart = DwtInstance::DwtGetTimeline_ms();
+        float timeout_ms = static_cast<float>(block_timeout_us) * 0.001f;
+        while (DwtInstance::DwtGetTimeline_ms() - tstart < timeout_ms)
+        {
             if (fifo_bind_->size() < fifo_bind_->max_size()) {
                 fifo_bind_->push(msg);
                 fifo_bind_->back().instance = this;
-                return true; // @todo
-            },
-            block_timeout_us / 1000);
+                return true;
+            }
+        }
         return false;
     }
 
@@ -79,13 +82,16 @@ namespace sal
     {
 #ifndef CAN2
         HAL_CAN_Start(&hcan);
+        HAL_CAN_ActivateNotification(&hcan, CAN_IT_TX_MAILBOX_EMPTY);
         HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO0_MSG_PENDING);
         HAL_CAN_ActivateNotification(&hcan, CAN_IT_RX_FIFO1_MSG_PENDING);
 #else
         HAL_CAN_Start(&hcan1);
+        HAL_CAN_ActivateNotification(&hcan1, CAN_IT_TX_MAILBOX_EMPTY);
         HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING);
         HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO1_MSG_PENDING);
         HAL_CAN_Start(&hcan2);
+        HAL_CAN_ActivateNotification(&hcan2, CAN_IT_TX_MAILBOX_EMPTY);
         HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO0_MSG_PENDING);
         HAL_CAN_ActivateNotification(&hcan2, CAN_IT_RX_FIFO1_MSG_PENDING);
 #endif // 兼容双CAN MCU
