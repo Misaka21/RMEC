@@ -14,7 +14,7 @@
             "device": "STM32F407IG",
             //svd文件，有这个文件才能查看寄存器的值，每个单片机都不同。可以在以下地址找到 https://github.com/posborne/cmsis-svd
             //该项目的根目录已经提供了C型开发板使用的外设svd文件
-            "svdFile": "STM32F407.svd",
+            "svdFile": "${workspaceFolder}/Toolchain/STM32F407.svd",
             "servertype": "openocd", //使用的GDB Server
             "configFiles": [
                 "${workspaceRoot}/Toolchain/openocd_dap.cfg", // 配置文件已经在根目录提供,若要修改以此类推,openocd的路径下的share/scripts中有各种写好的配置文件
@@ -41,7 +41,7 @@
             "showDevDebugOutput": "none",
             "servertype": "jlink",
             "interface": "swd",
-            "svdFile": "STM32F407.svd",
+            "svdFile": "${workspaceFolder}/Toolchain/STM32F407.svd",
             "rtos": "FreeRTOS",
             "liveWatch": {
                 "enabled": true,
@@ -58,7 +58,7 @@
             "request": "attach",
             "type": "cortex-debug",
             "device": "STM32F407IG",
-            "svdFile": "STM32F407.svd",
+            "svdFile": "${workspaceFolder}/Toolchain/STM32F407.svd",
             "servertype": "openocd",
             "configFiles": [
                 "${workspaceRoot}/Toolchain/openocd_dap.cfg",
@@ -79,7 +79,7 @@
             "showDevDebugOutput": "none",
             "servertype": "jlink",
             "interface": "swd",
-            "svdFile": "STM32F407.svd",
+            "svdFile": "${workspaceFolder}/Toolchain/STM32F407.svd",
             "rtos": "FreeRTOS",
             "liveWatch": {
                 "enabled": true,
