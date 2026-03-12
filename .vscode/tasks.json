@@ -1,0 +1,67 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "mkdir -p build ; cd build ; cmake .. -G Ninja ; ninja -j24; cd .."
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "rm -rf build"
+        },
+        {
+            "label": "download_dap",
+            "type": "shell",
+            "command": "openocd -f ${workspaceFolder}/Toolchain/openocd_dap.cfg -c init -c 'reset halt' -c 'flash write_image erase ${workspaceFolder}/build/pwf_fw.bin 0x08000000' -c reset -c shutdown",
+            "problemMatcher": []
+        },
+        {
+            "label": "download_jlink",
+            "type": "shell",
+            "command": "JFlash -openprj'${workspaceFolder}/Toolchain/stm32.jflash' -open'${workspaceFolder}/build/pwf_fw.hex',0x8000000 -auto -startapp -exit"
+        },
+        {
+            "label": "openocd",
+            "type": "shell",
+            "command": "openocd",
+            "args": [
+                "-f",
+                "${workspaceFolder}/Toolchain/openocd_dap.cfg"
+            ],
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "^Open On-Chip Debugger",
+                    "endsPattern": "^Info : Listening on port"
+                }
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "dedicated",
+                "close": false
+            }
+        },
+        {
+            "label": "ozone",
+            "type": "shell",
+            "command": "open -a /Applications/SEGGER/Ozone/Ozone.app --args ${workspaceFolder}/Toolchain/ozone.jdebug",
+            "dependsOn": [
+                "openocd"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "log",
+            "type": "shell",
+            "command": "JlinkRTTClient",
+            "args": [],
+            "problemMatcher": []
+        }
+    ]
+}

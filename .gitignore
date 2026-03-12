@@ -37,7 +37,6 @@ build
 .DS_Store
 
 # IDE / Editor
-.vscode/
 .idea/
 .cache/
 *.swp
