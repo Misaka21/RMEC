@@ -7,5 +7,5 @@
  */
 #include "FreeRTOS.h"
 
-__attribute__((section(".ccmram"), used))
+__attribute__((section(".bss_ccm"), used))
 uint8_t ucHeap[configTOTAL_HEAP_SIZE];

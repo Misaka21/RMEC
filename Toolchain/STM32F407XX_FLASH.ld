@@ -184,6 +184,18 @@ SECTIONS
     _eccmram = .;       /* create a global symbol at ccmram end */
   } >CCMRAM AT> FLASH
 
+  /* Zero-initialized CCMRAM section (like .bss but in CCMRAM).
+   * NOLOAD: no FLASH storage needed, startup code zeroes this region. */
+  .bss_ccm (NOLOAD) :
+  {
+    . = ALIGN(4);
+    _sccmram_bss = .;
+    *(.bss_ccm)
+    *(.bss_ccm*)
+    . = ALIGN(4);
+    _eccmram_bss = .;
+  } >CCMRAM
+
 
   /* Uninitialized data section */
   . = ALIGN(4);
