@@ -8,8 +8,8 @@
 // ======================== 灵敏度常量 ========================
 
 // 摇杆满杆对应的角速度 (deg/s)
-static constexpr float YAW_SENSITIVITY   = 300.0f;
-static constexpr float PITCH_SENSITIVITY = 200.0f;
+static constexpr float YAW_SENSITIVITY   = 800.0f;
+static constexpr float PITCH_SENSITIVITY = 1000.0f;
 
 // 遥控器通道满杆值
 static constexpr float CH_FULL_SCALE = 660.0f;
