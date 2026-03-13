@@ -21,24 +21,16 @@ struct GameResult {
 };
 
 // ======================== 机器人血量 (0x0003, 3Hz) ========================
+// V1.2.0: 仅己方数据 (16B)
 
 struct GameRobotHp {
-    // 红方
-    uint16_t red_1_hp  = 0;  // 英雄
-    uint16_t red_2_hp  = 0;  // 工程
-    uint16_t red_3_hp  = 0;  // 步兵3
-    uint16_t red_4_hp  = 0;  // 步兵4
-    uint16_t red_7_hp  = 0;  // 哨兵
-    uint16_t red_outpost_hp = 0;  // 前哨站
-    uint16_t red_base_hp    = 0;  // 基地
-    // 蓝方
-    uint16_t blue_1_hp = 0;
-    uint16_t blue_2_hp = 0;
-    uint16_t blue_3_hp = 0;
-    uint16_t blue_4_hp = 0;
-    uint16_t blue_7_hp = 0;
-    uint16_t blue_outpost_hp = 0;
-    uint16_t blue_base_hp    = 0;
+    uint16_t ally_1_hp  = 0;  // 英雄
+    uint16_t ally_2_hp  = 0;  // 工程
+    uint16_t ally_3_hp  = 0;  // 步兵3
+    uint16_t ally_4_hp  = 0;  // 步兵4
+    uint16_t ally_7_hp  = 0;  // 哨兵
+    uint16_t ally_outpost_hp = 0;  // 前哨站
+    uint16_t ally_base_hp    = 0;  // 基地
 };
 
 // ======================== 场地事件 (0x0101, 3Hz) ========================
@@ -76,16 +68,12 @@ struct RobotStatus {
 };
 
 // ======================== 功率热量 (0x0202, 10Hz) ========================
-// V1.2.0: 前6字节保留, 无 chassis_power
+// V1.2.0: 前 8 字节保留 (uint16_t×2 + float), 无 chassis_power
 
 struct PowerHeat {
-    uint16_t reserved1          = 0;
-    uint16_t reserved2          = 0;
-    uint16_t reserved3          = 0;
-    uint16_t buffer_energy      = 0;  // 缓冲能量 (J)
-    uint16_t shooter_17mm_1_barrel_heat = 0;
-    uint16_t shooter_17mm_2_barrel_heat = 0;
-    uint16_t shooter_42mm_barrel_heat   = 0;
+    uint16_t buffer_energy           = 0;  // 缓冲能量 (J)
+    uint16_t shooter_17mm_barrel_heat = 0;  // 17mm 枪口热量
+    uint16_t shooter_42mm_barrel_heat = 0;  // 42mm 枪口热量
 };
 
 // ======================== 机器人位置 (0x0203, 10Hz) ========================
@@ -99,13 +87,12 @@ struct RobotPos {
 // ======================== 增益 (0x0204, 3Hz) ========================
 
 struct Buff {
-    uint8_t  recovery_buff     = 0;
-    uint8_t  cooling_buff      = 0;
-    uint8_t  defence_buff      = 0;
-    uint8_t  vulnerability_buff = 0;
-    uint16_t attack_buff       = 0;
-    bool     power_rune_active = false;
-    bool     power_rune_available = false;
+    uint8_t  recovery_buff      = 0;  // 回血增益 (百分比)
+    uint16_t cooling_buff       = 0;  // 冷却增益 (具体值, uint16_t!)
+    uint8_t  defence_buff       = 0;  // 防御增益 (百分比)
+    uint8_t  vulnerability_buff = 0;  // 负防御增益 (百分比)
+    uint16_t attack_buff        = 0;  // 攻击增益 (百分比)
+    uint8_t  remaining_energy   = 0;  // 剩余能量反馈 (bit 编码)
 };
 
 // ======================== 伤害状态 (0x0206, 受伤后) ========================
@@ -127,16 +114,17 @@ struct ShootData {
 // ======================== 允许发弹量 (0x0208, 10Hz) ========================
 
 struct ProjectileAllowance {
-    uint16_t projectile_allowance_17mm = 0;
-    uint16_t projectile_allowance_42mm = 0;
-    uint16_t remaining_gold_coin       = 0;
+    uint16_t projectile_allowance_17mm     = 0;
+    uint16_t projectile_allowance_42mm     = 0;
+    uint16_t remaining_gold_coin           = 0;
+    uint16_t projectile_allowance_fortress = 0;  // 堡垒储备发弹量
 };
 
 // ======================== RFID 状态 (0x0209, 3Hz) ========================
 
 struct RfidStatus {
-    uint32_t rfid_status = 0;  // bit 编码
-    uint8_t  rfid_buff   = 0;
+    uint32_t rfid_status   = 0;  // bit 编码
+    uint8_t  rfid_status_2 = 0;  // 隧道等额外 RFID 点位
 };
 
 // ======================== 全场机器人位置 (0x020B, 1Hz, 哨兵专用) ========================

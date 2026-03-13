@@ -48,7 +48,10 @@ void RefereeTaskStart() {
         },
 
         .task_func = []() {
-            referee_topic.Publish(parser->Data());
+            static referee::RefereeData snapshot{};
+            if (parser->Read(snapshot)) {
+                referee_topic.Publish(snapshot);
+            }
         },
     });
 }
@@ -58,7 +61,9 @@ bool RefereeIsOnline() {
 }
 
 const referee::RefereeData& GetRefereeData() {
-    return parser->Data();
+    static referee::RefereeData snapshot{};
+    parser->Read(snapshot);
+    return snapshot;
 }
 
 #else // GIMBAL_BOARD — 常规链路不在云台板编译

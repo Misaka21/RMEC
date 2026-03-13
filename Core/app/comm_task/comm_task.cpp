@@ -50,7 +50,7 @@ void CommTaskStart() {
             if (ref_reader->Read(ref)) {
                 // 功率热量
                 tx.buffer_energy          = ref.power_heat.buffer_energy;
-                tx.shooter_17mm_heat      = ref.power_heat.shooter_17mm_1_barrel_heat;
+                tx.shooter_17mm_heat      = ref.power_heat.shooter_17mm_barrel_heat;
                 tx.shooter_42mm_heat      = ref.power_heat.shooter_42mm_barrel_heat;
                 // 机器人状态
                 tx.shooter_heat_limit     = ref.robot_status.shooter_barrel_heat_limit;
@@ -73,6 +73,7 @@ void CommTaskStart() {
                 tx.attack_buff            = ref.buff.attack_buff;
                 // 哨兵信息
                 tx.sentry_info            = ref.sentry_info.sentry_info;
+                tx.sentry_info_2          = ref.sentry_info.sentry_info_2;
             }
 #elif defined(GIMBAL_BOARD)
             // 云台板 → 底盘板: 底盘控制命令 + 云台姿态

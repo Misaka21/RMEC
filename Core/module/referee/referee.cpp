@@ -80,6 +80,10 @@ void RefereeParser::ProcessFrame() {
     // 数据区起始指针
     const uint8_t* data = rx_buf_ + HEADER_LEN + CMD_ID_LEN;
 
+    // SeqLock 写开始
+    ++seq_;
+    __asm volatile("" ::: "memory");
+
     switch (cmd_id) {
     case CMD_GAME_STATUS: {
         WireGameStatus w{};
@@ -101,20 +105,13 @@ void RefereeParser::ProcessFrame() {
     case CMD_GAME_ROBOT_HP: {
         WireGameRobotHp w{};
         std::memcpy(&w, data, sizeof(w));
-        data_.game_robot_hp.red_1_hp        = w.red_1_robot_hp;
-        data_.game_robot_hp.red_2_hp        = w.red_2_robot_hp;
-        data_.game_robot_hp.red_3_hp        = w.red_3_robot_hp;
-        data_.game_robot_hp.red_4_hp        = w.red_4_robot_hp;
-        data_.game_robot_hp.red_7_hp        = w.red_7_robot_hp;
-        data_.game_robot_hp.red_outpost_hp  = w.red_outpost_hp;
-        data_.game_robot_hp.red_base_hp     = w.red_base_hp;
-        data_.game_robot_hp.blue_1_hp       = w.blue_1_robot_hp;
-        data_.game_robot_hp.blue_2_hp       = w.blue_2_robot_hp;
-        data_.game_robot_hp.blue_3_hp       = w.blue_3_robot_hp;
-        data_.game_robot_hp.blue_4_hp       = w.blue_4_robot_hp;
-        data_.game_robot_hp.blue_7_hp       = w.blue_7_robot_hp;
-        data_.game_robot_hp.blue_outpost_hp = w.blue_outpost_hp;
-        data_.game_robot_hp.blue_base_hp    = w.blue_base_hp;
+        data_.game_robot_hp.ally_1_hp       = w.ally_1_robot_hp;
+        data_.game_robot_hp.ally_2_hp       = w.ally_2_robot_hp;
+        data_.game_robot_hp.ally_3_hp       = w.ally_3_robot_hp;
+        data_.game_robot_hp.ally_4_hp       = w.ally_4_robot_hp;
+        data_.game_robot_hp.ally_7_hp       = w.ally_7_robot_hp;
+        data_.game_robot_hp.ally_outpost_hp = w.ally_outpost_hp;
+        data_.game_robot_hp.ally_base_hp    = w.ally_base_hp;
         break;
     }
 
@@ -162,13 +159,9 @@ void RefereeParser::ProcessFrame() {
     case CMD_POWER_HEAT: {
         WirePowerHeat w{};
         std::memcpy(&w, data, sizeof(w));
-        data_.power_heat.reserved1                = w.reserved1;
-        data_.power_heat.reserved2                = w.reserved2;
-        data_.power_heat.reserved3                = w.reserved3;
         data_.power_heat.buffer_energy            = w.buffer_energy;
-        data_.power_heat.shooter_17mm_1_barrel_heat = w.shooter_17mm_1_barrel_heat;
-        data_.power_heat.shooter_17mm_2_barrel_heat = w.shooter_17mm_2_barrel_heat;
-        data_.power_heat.shooter_42mm_barrel_heat   = w.shooter_42mm_barrel_heat;
+        data_.power_heat.shooter_17mm_barrel_heat = w.shooter_17mm_barrel_heat;
+        data_.power_heat.shooter_42mm_barrel_heat = w.shooter_42mm_barrel_heat;
         break;
     }
 
@@ -189,6 +182,7 @@ void RefereeParser::ProcessFrame() {
         data_.buff.defence_buff       = w.defence_buff;
         data_.buff.vulnerability_buff = w.vulnerability_buff;
         data_.buff.attack_buff        = w.attack_buff;
+        data_.buff.remaining_energy   = w.remaining_energy;
         break;
     }
 
@@ -213,16 +207,18 @@ void RefereeParser::ProcessFrame() {
     case CMD_PROJECTILE_ALW: {
         WireProjectileAllowance w{};
         std::memcpy(&w, data, sizeof(w));
-        data_.projectile_allowance.projectile_allowance_17mm = w.projectile_allowance_17mm;
-        data_.projectile_allowance.projectile_allowance_42mm = w.projectile_allowance_42mm;
-        data_.projectile_allowance.remaining_gold_coin       = w.remaining_gold_coin;
+        data_.projectile_allowance.projectile_allowance_17mm     = w.projectile_allowance_17mm;
+        data_.projectile_allowance.projectile_allowance_42mm     = w.projectile_allowance_42mm;
+        data_.projectile_allowance.remaining_gold_coin           = w.remaining_gold_coin;
+        data_.projectile_allowance.projectile_allowance_fortress = w.projectile_allowance_fortress;
         break;
     }
 
     case CMD_RFID_STATUS: {
         WireRfidStatus w{};
         std::memcpy(&w, data, sizeof(w));
-        data_.rfid_status.rfid_status = w.rfid_status;
+        data_.rfid_status.rfid_status   = w.rfid_status;
+        data_.rfid_status.rfid_status_2 = w.rfid_status_2;
         break;
     }
 
@@ -245,7 +241,8 @@ void RefereeParser::ProcessFrame() {
     case CMD_SENTRY_INFO: {
         WireSentryInfo w{};
         std::memcpy(&w, data, sizeof(w));
-        data_.sentry_info.sentry_info = w.sentry_info;
+        data_.sentry_info.sentry_info   = w.sentry_info;
+        data_.sentry_info.sentry_info_2 = w.sentry_info_2;
         break;
     }
 
@@ -260,6 +257,10 @@ void RefereeParser::ProcessFrame() {
     default:
         break;
     }
+
+    // SeqLock 写结束
+    __asm volatile("" ::: "memory");
+    ++seq_;
 }
 
 // ======================== 发送 ========================
@@ -291,6 +292,40 @@ void RefereeParser::Send(uint16_t cmd_id, const uint8_t* payload, uint16_t len) 
     Crc16Append(tx_buf, frame_len);
 
     send_func_(tx_buf, frame_len);
+}
+
+// ======================== 交互数据信封 ========================
+
+void RefereeParser::SendInteraction(uint16_t sub_cmd_id, uint16_t receiver_id,
+                                     const uint8_t* content, uint16_t content_len) {
+    // interaction_header (6B) + content
+    constexpr uint16_t HEADER_SIZE = sizeof(WireInteractionHeader);
+    uint16_t total = HEADER_SIZE + content_len;
+    if (total > 118) return;  // 0x0301 data 段最大 118B
+
+    uint8_t buf[118]{};
+    WireInteractionHeader hdr{};
+    hdr.sub_cmd_id = sub_cmd_id;
+    hdr.sender_id  = data_.robot_status.robot_id;
+    hdr.receiver_id = (receiver_id != 0) ? receiver_id : ClientId();
+    std::memcpy(buf, &hdr, HEADER_SIZE);
+
+    if (content && content_len > 0) {
+        std::memcpy(buf + HEADER_SIZE, content, content_len);
+    }
+
+    Send(CMD_INTERACTION, buf, total);
+}
+
+// ======================== 哨兵自主决策 ========================
+
+void RefereeParser::SendSentryDecision(uint32_t sentry_cmd) {
+    // 哨兵决策发给服务器, receiver_id = 0 无意义, 按协议填 0x0000
+    // 但实际走 0x0301 子命令, 服务器直接处理
+    WireSentryCmd cmd{};
+    cmd.sentry_cmd = sentry_cmd;
+    SendInteraction(SUB_CMD_SENTRY_CMD, 0x8080,
+                    reinterpret_cast<const uint8_t*>(&cmd), sizeof(cmd));
 }
 
 } // namespace referee

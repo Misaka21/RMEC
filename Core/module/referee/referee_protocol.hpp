@@ -18,25 +18,36 @@ inline constexpr uint16_t MAX_FRAME_LEN = HEADER_LEN + CMD_ID_LEN + MAX_DATA_LEN
 
 inline constexpr uint16_t CMD_GAME_STATUS     = 0x0001;  // 11B
 inline constexpr uint16_t CMD_GAME_RESULT     = 0x0002;  //  1B
-inline constexpr uint16_t CMD_GAME_ROBOT_HP   = 0x0003;  // 32B
+inline constexpr uint16_t CMD_GAME_ROBOT_HP   = 0x0003;  // 16B (V1.2.0 仅己方)
 inline constexpr uint16_t CMD_EVENT_DATA      = 0x0101;  //  4B
 inline constexpr uint16_t CMD_REFEREE_WARN    = 0x0104;  //  3B
 inline constexpr uint16_t CMD_DART_INFO       = 0x0105;  //  3B
 inline constexpr uint16_t CMD_ROBOT_STATUS    = 0x0201;  // 13B
 inline constexpr uint16_t CMD_POWER_HEAT      = 0x0202;  // 14B
 inline constexpr uint16_t CMD_ROBOT_POS       = 0x0203;  // 16B
-inline constexpr uint16_t CMD_BUFF            = 0x0204;  //  6B
+inline constexpr uint16_t CMD_BUFF            = 0x0204;  //  8B
 inline constexpr uint16_t CMD_HURT_DATA       = 0x0206;  //  1B
 inline constexpr uint16_t CMD_SHOOT_DATA      = 0x0207;  //  7B
-inline constexpr uint16_t CMD_PROJECTILE_ALW  = 0x0208;  //  6B
-inline constexpr uint16_t CMD_RFID_STATUS     = 0x0209;  //  4B
+inline constexpr uint16_t CMD_PROJECTILE_ALW  = 0x0208;  //  8B
+inline constexpr uint16_t CMD_RFID_STATUS     = 0x0209;  //  5B
 inline constexpr uint16_t CMD_GROUND_POS      = 0x020B;  // 40B
-inline constexpr uint16_t CMD_SENTRY_INFO     = 0x020D;  //  4B
+inline constexpr uint16_t CMD_SENTRY_INFO     = 0x020D;  //  6B
 inline constexpr uint16_t CMD_INTERACTION     = 0x0301;  // ≤118B (可变)
 inline constexpr uint16_t CMD_CUSTOM_CTRL     = 0x0302;  // 30B
 inline constexpr uint16_t CMD_MAP_COMMAND     = 0x0303;  // 15B
 inline constexpr uint16_t CMD_CUSTOM_CLIENT   = 0x0310;  // ≤300B (可变)
 inline constexpr uint16_t CMD_CLIENT_CMD      = 0x0311;  // 12B
+
+// ======================== 0x0301 交互数据子命令 ========================
+
+inline constexpr uint16_t SUB_CMD_DELETE_LAYER  = 0x0100;
+inline constexpr uint16_t SUB_CMD_DRAW_1        = 0x0101;
+inline constexpr uint16_t SUB_CMD_DRAW_2        = 0x0102;
+inline constexpr uint16_t SUB_CMD_DRAW_5        = 0x0103;
+inline constexpr uint16_t SUB_CMD_DRAW_7        = 0x0104;
+inline constexpr uint16_t SUB_CMD_DRAW_STRING   = 0x0110;
+inline constexpr uint16_t SUB_CMD_SENTRY_CMD    = 0x0120;
+inline constexpr uint16_t SUB_CMD_RADAR_CMD     = 0x0121;
 
 // ======================== 各 cmd_id 的 data_length ========================
 // 返回 0 表示可变长度或未知 cmd_id (跳过长度校验)
@@ -45,20 +56,20 @@ inline constexpr uint16_t CmdDataLength(uint16_t cmd_id) {
     switch (cmd_id) {
     case CMD_GAME_STATUS:    return 11;
     case CMD_GAME_RESULT:    return 1;
-    case CMD_GAME_ROBOT_HP:  return 32;
+    case CMD_GAME_ROBOT_HP:  return 16;
     case CMD_EVENT_DATA:     return 4;
     case CMD_REFEREE_WARN:   return 3;
     case CMD_DART_INFO:      return 3;
     case CMD_ROBOT_STATUS:   return 13;
     case CMD_POWER_HEAT:     return 14;
     case CMD_ROBOT_POS:      return 16;
-    case CMD_BUFF:           return 6;
+    case CMD_BUFF:           return 8;
     case CMD_HURT_DATA:      return 1;
     case CMD_SHOOT_DATA:     return 7;
-    case CMD_PROJECTILE_ALW: return 6;
-    case CMD_RFID_STATUS:    return 4;
+    case CMD_PROJECTILE_ALW: return 8;
+    case CMD_RFID_STATUS:    return 5;
     case CMD_GROUND_POS:     return 40;
-    case CMD_SENTRY_INFO:    return 4;
+    case CMD_SENTRY_INFO:    return 6;
     case CMD_CUSTOM_CTRL:    return 30;
     case CMD_MAP_COMMAND:    return 15;
     case CMD_CLIENT_CMD:     return 12;
@@ -210,24 +221,16 @@ struct WireGameResult {
     uint8_t winner;
 };
 
-// 0x0003 机器人血量 (32B)
+// 0x0003 机器人血量 (16B) — V1.2.0 仅己方
 struct WireGameRobotHp {
-    uint16_t red_1_robot_hp;
-    uint16_t red_2_robot_hp;
-    uint16_t red_3_robot_hp;
-    uint16_t red_4_robot_hp;
+    uint16_t ally_1_robot_hp;
+    uint16_t ally_2_robot_hp;
+    uint16_t ally_3_robot_hp;
+    uint16_t ally_4_robot_hp;
     uint16_t reserved;
-    uint16_t red_7_robot_hp;
-    uint16_t red_outpost_hp;
-    uint16_t red_base_hp;
-    uint16_t blue_1_robot_hp;
-    uint16_t blue_2_robot_hp;
-    uint16_t blue_3_robot_hp;
-    uint16_t blue_4_robot_hp;
-    uint16_t blue_reserved;
-    uint16_t blue_7_robot_hp;
-    uint16_t blue_outpost_hp;
-    uint16_t blue_base_hp;
+    uint16_t ally_7_robot_hp;
+    uint16_t ally_outpost_hp;
+    uint16_t ally_base_hp;
 };
 
 // 0x0101 场地事件 (4B)
@@ -266,10 +269,9 @@ struct WireRobotStatus {
 struct WirePowerHeat {
     uint16_t reserved1;
     uint16_t reserved2;
-    uint16_t reserved3;
+    float    reserved3;                  // 4B float, 非 uint16_t!
     uint16_t buffer_energy;
-    uint16_t shooter_17mm_1_barrel_heat;
-    uint16_t shooter_17mm_2_barrel_heat;
+    uint16_t shooter_17mm_barrel_heat;   // 仅一个 17mm 字段
     uint16_t shooter_42mm_barrel_heat;
 };
 
@@ -284,13 +286,14 @@ struct WireRobotPos {
     float reserved;
 };
 
-// 0x0204 增益 (6B)
+// 0x0204 增益 (8B)
 struct WireBuff {
     uint8_t  recovery_buff;
-    uint8_t  cooling_buff;
+    uint16_t cooling_buff;        // uint16_t, 非 uint8_t!
     uint8_t  defence_buff;
     uint8_t  vulnerability_buff;
     uint16_t attack_buff;
+    uint8_t  remaining_energy;    // V1.2.0 剩余能量反馈
 };
 
 // 0x0206 伤害状态 (1B)
@@ -306,16 +309,18 @@ struct WireShootData {
     float   initial_speed;
 };
 
-// 0x0208 允许发弹量 (6B)
+// 0x0208 允许发弹量 (8B)
 struct WireProjectileAllowance {
     uint16_t projectile_allowance_17mm;
     uint16_t projectile_allowance_42mm;
     uint16_t remaining_gold_coin;
+    uint16_t projectile_allowance_fortress;  // V1.2.0 堡垒储备发弹量
 };
 
-// 0x0209 RFID 状态 (4B)
+// 0x0209 RFID 状态 (5B)
 struct WireRfidStatus {
     uint32_t rfid_status;
+    uint8_t  rfid_status_2;  // 隧道等额外 RFID 点位
 };
 
 // 0x020B 全场机器人位置 (40B)
@@ -332,14 +337,69 @@ struct WireGroundRobotPosition {
     float reserved_y;
 };
 
-// 0x020D 哨兵信息同步 (4B)
+// 0x020D 哨兵信息同步 (6B)
 struct WireSentryInfo {
     uint32_t sentry_info;
+    uint16_t sentry_info_2;
 };
 
 // 0x0302 自定义控制器 (30B)
 struct WireCustomController {
     uint8_t data[30];
+};
+
+// ======================== 交互数据 (0x0301) 发送用 ========================
+
+// 交互数据头 (6B): 所有 0x0301 子命令共用
+struct WireInteractionHeader {
+    uint16_t sub_cmd_id;
+    uint16_t sender_id;
+    uint16_t receiver_id;
+};
+
+// 图形删除操作 (2B): sub_cmd_id = 0x0100
+struct WireGraphicDelete {
+    uint8_t delete_type;  // 0=空, 1=删除图层, 2=删除所有
+    uint8_t layer;        // 0~9
+};
+
+// 图形元素 (15B): sub_cmd_id = 0x0101~0x0104
+struct WireGraphicData {
+    uint8_t  figure_name[3];
+    uint32_t operate_type : 3;
+    uint32_t figure_type  : 3;
+    uint32_t layer        : 4;
+    uint32_t color        : 4;
+    uint32_t details_a    : 9;
+    uint32_t details_b    : 9;
+    uint32_t width        : 10;
+    uint32_t start_x      : 11;
+    uint32_t start_y      : 11;
+    uint32_t details_c    : 10;
+    uint32_t details_d    : 11;
+    uint32_t details_e    : 11;
+};
+
+// 哨兵自主决策指令 (4B): sub_cmd_id = 0x0120
+struct WireSentryCmd {
+    uint32_t sentry_cmd;
+};
+
+// 选手端小地图接收机器人消息 (34B): cmd_id = 0x0308
+struct WireCustomInfo {
+    uint16_t sender_id;
+    uint16_t receiver_id;
+    uint8_t  user_data[30];  // UTF-16 编码
+};
+
+// 小地图路径 (103B): cmd_id = 0x0307
+struct WireMapPath {
+    uint8_t  intention;       // 1=攻击, 2=防守, 3=移动
+    uint16_t start_x;        // 单位: dm
+    uint16_t start_y;
+    int8_t   delta_x[49];
+    int8_t   delta_y[49];
+    uint16_t sender_id;
 };
 
 #pragma pack(pop)

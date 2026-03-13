@@ -28,6 +28,7 @@
 #include "dt7_protocol.hpp"
 #include "vision_comm.hpp"
 #include "referee.hpp"
+#include "referee_ui.hpp"
 
 #include "mpc_tracker.hpp"
 
@@ -40,6 +41,7 @@ static_assert(sizeof(Ins) > 0);
 static_assert(sizeof(PowerLimiter) > 0);
 static_assert(sizeof(Rls2) > 0);
 static_assert(sizeof(referee::RefereeParser) > 0);
+static_assert(sizeof(referee::RefereeUi) > 0);
 
 using DjiCascadeMotor = Motor<DjiDriver, CascadePid>;
 using DjiMitMotor     = Motor<DjiDriver, MitPassthrough>;

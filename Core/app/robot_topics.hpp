@@ -137,11 +137,12 @@ struct Chassis2GimbalData {
 
     // 增益 (0x0204, 3Hz)
     uint8_t  recovery_buff          = 0;
-    uint8_t  cooling_buff           = 0;
+    uint16_t cooling_buff           = 0;  // 冷却增益 (具体值, uint16_t)
     uint16_t attack_buff            = 0;
 
     // 哨兵信息 (0x020D, 1Hz)
     uint32_t sentry_info            = 0;
+    uint16_t sentry_info_2          = 0;
 };
 #pragma pack()
 
