@@ -9,6 +9,7 @@
 #include "daemon_task.hpp"
 #include "comm_task.hpp"
 #include "vision_task.hpp"
+#include "referee_task.hpp"
 #include "robot_task.hpp"
 #include "vofa_task.hpp"
 
@@ -26,6 +27,7 @@
 #include "remote.hpp"
 #include "dt7_protocol.hpp"
 #include "vision_comm.hpp"
+#include "referee.hpp"
 
 #include "mpc_tracker.hpp"
 
@@ -37,6 +39,7 @@ static_assert(sizeof(QuaternionEkf) > 0);
 static_assert(sizeof(Ins) > 0);
 static_assert(sizeof(PowerLimiter) > 0);
 static_assert(sizeof(Rls2) > 0);
+static_assert(sizeof(referee::RefereeParser) > 0);
 
 using DjiCascadeMotor = Motor<DjiDriver, CascadePid>;
 using DjiMitMotor     = Motor<DjiDriver, MitPassthrough>;
@@ -54,19 +57,23 @@ extern "C" void RobotInit() {
     RemoteInit();
     MotorTaskStart();
     VisionTaskStart();
+    RefereeTaskStart();
+    VideoLinkTaskStart();
     RobotTaskStart();
 #elif defined(GIMBAL_BOARD)
-    // 云台板: IMU + 遥控器 + 云台/发射电机 + 双板通信 + 视觉
+    // 云台板: IMU + 遥控器 + 云台/发射电机 + 双板通信 + 视觉 + 图传
     InsTaskStart();
     RemoteInit();
     MotorTaskStart();
     CommTaskStart();
     VisionTaskStart();
+    VideoLinkTaskStart();
     RobotTaskStart();
 #elif defined(CHASSIS_BOARD)
-    // 底盘板: 底盘电机 + 双板通信 (IMU/遥控器数据由云台板转发)
+    // 底盘板: 底盘电机 + 双板通信 + 裁判系统 (IMU/遥控器数据由云台板转发)
     MotorTaskStart();
     CommTaskStart();
+    RefereeTaskStart();
 #endif
     DaemonTaskStart();
     VofaTaskStart();

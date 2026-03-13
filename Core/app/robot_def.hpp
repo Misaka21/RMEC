@@ -58,6 +58,11 @@ inline constexpr float IMU_PRE_G_NORM           = 9.8909f;
 
 #define RC_UART_HANDLE      huart3
 
+// ======================== 裁判系统 ========================
+
+#define REFEREE_UART_HANDLE      huart6  // TODO: 确认实际串口
+#define VIDEO_LINK_UART_HANDLE   huart1  // TODO: 确认实际串口 (与视觉共用时需二选一)
+
 // ======================== 视觉通信 ========================
 
 // 传输方式 (二选一, 默认 UART)

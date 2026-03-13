@@ -4,6 +4,7 @@
 #include "ins_data.hpp"
 #include "dt7_data.hpp"
 #include "vision_data.hpp"
+#include "referee_def.hpp"
 
 #include <cstdint>
 #include <type_traits>
@@ -98,10 +99,19 @@ static_assert(std::is_trivially_copyable_v<ShootFeedData>);
 // 按物理方向定义, 两板共用同一份代码
 #pragma pack(1)
 struct Gimbal2ChassisData {
-    uint8_t placeholder[8];  // TODO: 填入实际字段 (如底盘命令)
+    ChassisMode chassis_mode = ChassisMode::ZERO_FORCE;
+    float vx = 0;
+    float vy = 0;
+    float wz = 0;
 };
 struct Chassis2GimbalData {
-    uint8_t placeholder[8];  // TODO: 填入实际字段 (如功率反馈)
+    uint16_t buffer_energy        = 0;  // 0x0202 缓冲能量 (J)
+    uint16_t shooter_17mm_heat    = 0;  // 0x0202 17mm 热量
+    uint16_t shooter_heat_limit   = 0;  // 0x0201 热量上限
+    uint16_t chassis_power_limit  = 0;  // 0x0201 功率上限
+    uint16_t projectile_allowance = 0;  // 0x0208 允许发弹量
+    uint8_t  robot_level          = 0;  // 0x0201 机器人等级
+    uint8_t  robot_id             = 0;  // 0x0201 机器人 ID
 };
 #pragma pack()
 
@@ -140,6 +150,9 @@ inline Topic<ShootFeedData>   shoot_feed_topic;
 
 // 视觉通信接收数据 (ISR 回调发布)
 inline Topic<vision::VisionRxData> vision_topic;
+
+// 裁判系统数据 (10 Hz, referee_task 发布)
+inline Topic<referee::RefereeData> referee_topic;
 
 // 双板通信接收数据 (100 Hz, comm_task 发布)
 inline Topic<BoardCommRxData> board_comm_topic;
