@@ -195,6 +195,11 @@ inline constexpr uint16_t COMM_BASE_TX_ID = COMM_GIMBAL2CHASSIS_BASE_ID;
 inline constexpr uint16_t COMM_BASE_RX_ID = COMM_CHASSIS2GIMBAL_BASE_ID;
 #endif
 
+// ======================== VOFA 调试绘图 ========================
+
+#define VOFA_ENABLED
+#define VOFA_UART_HANDLE    huart6
+
 // ======================== IMU 安装方向 ========================
 
 inline constexpr int8_t GYRO2GIMBAL_DIR_YAW    = 1;

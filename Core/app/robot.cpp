@@ -10,6 +10,7 @@
 #include "comm_task.hpp"
 #include "vision_task.hpp"
 #include "robot_task.hpp"
+#include "vofa_task.hpp"
 
 // Module 层 (编译验证)
 #include "motor.hpp"
@@ -68,4 +69,5 @@ extern "C" void RobotInit() {
     CommTaskStart();
 #endif
     DaemonTaskStart();
+    VofaTaskStart();
 }
