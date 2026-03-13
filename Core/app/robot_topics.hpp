@@ -98,20 +98,50 @@ static_assert(std::is_trivially_copyable_v<ShootFeedData>);
 
 // 按物理方向定义, 两板共用同一份代码
 #pragma pack(1)
+
+// 云台板 → 底盘板: 控制命令 + 云台姿态
 struct Gimbal2ChassisData {
     ChassisMode chassis_mode = ChassisMode::ZERO_FORCE;
-    float vx = 0;
-    float vy = 0;
-    float wz = 0;
+    float vx           = 0;     // 前进速度
+    float vy           = 0;     // 横移速度
+    float wz           = 0;     // 旋转速度
+    float offset_angle = 0;     // 云台-底盘偏转角 (deg)
+    float yaw_ins      = 0;     // 云台 yaw 陀螺仪角度 (deg), 底盘跟随用
 };
+
+// 底盘板 → 云台板: 裁判系统数据转发
 struct Chassis2GimbalData {
-    uint16_t buffer_energy        = 0;  // 0x0202 缓冲能量 (J)
-    uint16_t shooter_17mm_heat    = 0;  // 0x0202 17mm 热量
-    uint16_t shooter_heat_limit   = 0;  // 0x0201 热量上限
-    uint16_t chassis_power_limit  = 0;  // 0x0201 功率上限
-    uint16_t projectile_allowance = 0;  // 0x0208 允许发弹量
-    uint8_t  robot_level          = 0;  // 0x0201 机器人等级
-    uint8_t  robot_id             = 0;  // 0x0201 机器人 ID
+    // 功率热量 (0x0202, 10Hz)
+    uint16_t buffer_energy          = 0;  // 缓冲能量 (J)
+    uint16_t shooter_17mm_heat      = 0;  // 17mm 枪口热量
+    uint16_t shooter_42mm_heat      = 0;  // 42mm 枪口热量
+
+    // 机器人状态 (0x0201, 10Hz)
+    uint16_t shooter_heat_limit     = 0;  // 热量上限
+    uint16_t shooter_cooling_value  = 0;  // 每秒冷却值
+    uint16_t chassis_power_limit    = 0;  // 功率上限
+    uint8_t  robot_level            = 0;  // 机器人等级
+    uint8_t  robot_id               = 0;  // 机器人 ID (< 7 红方, > 7 蓝方)
+    uint8_t  power_output           = 0;  // bit0:gimbal, bit1:chassis, bit2:shooter
+
+    // 允许发弹量 (0x0208, 10Hz)
+    uint16_t projectile_allowance_17mm = 0;
+    uint16_t projectile_allowance_42mm = 0;
+    uint16_t remaining_gold_coin       = 0;
+
+    // 射击信息 (0x0207, 弹丸发射后)
+    float    bullet_speed           = 0;  // 实测弹速 (m/s)
+
+    // 比赛状态 (0x0001, 1Hz)
+    uint8_t  game_progress          = 0;  // 比赛阶段
+
+    // 增益 (0x0204, 3Hz)
+    uint8_t  recovery_buff          = 0;
+    uint8_t  cooling_buff           = 0;
+    uint16_t attack_buff            = 0;
+
+    // 哨兵信息 (0x020D, 1Hz)
+    uint32_t sentry_info            = 0;
 };
 #pragma pack()
 
