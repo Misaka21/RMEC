@@ -24,7 +24,7 @@ motor/
 ├── motor.hpp                    # Motor<D,C> 模板主类
 ├── motor_measure.hpp            # MotorMeasure 编码器数据 + 多圈角度
 ├── driver/
-│   └── dji_driver.hpp/cpp       # DJI M3508/M2006/GM6020 CAN 驱动
+│   └── dji_driver.hpp/cpp       # DJI M3508/M2006/GM6020/GM6020_CURRENT CAN 驱动
 ├── controller/
 │   ├── cascade_pid.hpp/cpp      # 角度→速度串级 PID
 │   └── mit_passthrough.hpp      # 直通控制器 (MIT 模式)
@@ -45,8 +45,8 @@ bool                IsOnline() const;
 
 ### DjiDriver
 
-- 支持 M3508, M2006, GM6020
-- 6 个静态 TxGroup, 按 CAN 总线 + 仲裁 ID 分组
+- 支持 M3508, M2006, GM6020 (电压), GM6020_CURRENT (电流)
+- 10 个静态 TxGroup, 按 CAN 总线 + 仲裁 ID + 控制模式分组
 - CAN ISR 回调自动更新 `MotorMeasure`
 - `FlushAll()` 一次性发送所有组的控制帧, 每个控制周期调用一次
 

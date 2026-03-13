@@ -6,41 +6,90 @@
 // ---- 静态成员定义 ----
 DjiDriver::TxGroup DjiDriver::tx_groups_[GROUP_COUNT]{};
 
+// ---- 电机类型参数表 (按 DjiMotorType 枚举值索引) ----
+namespace {
+
+struct MotorTypeInfo {
+    float raw_per_unit;     // 物理量→CAN 原始值换算因子
+    float max_physical;     // 物理量上限
+    uint8_t min_id;         // 最小合法 motor_id
+    uint8_t max_id;         // 最大合法 motor_id
+    uint16_t rx_id_base;    // 反馈帧 ID = rx_id_base + motor_id
+    uint8_t id_split;       // id <= split → 低组, id > split → 高组
+    uint8_t group_lo[2];    // 低组索引 [CAN1, CAN2]
+    uint8_t group_hi[2];    // 高组索引 [CAN1, CAN2]
+};
+
+using namespace dji_motor;
+
+constexpr MotorTypeInfo TYPE_INFO[] = {
+    // M3508: 电流, id 1-8, rx 0x200+id, 低组 0x200, 高组 0x1FF
+    {M3508_RAW_PER_AMP, M3508_MAX_CURRENT, 1, 8, 0x200, 4, {0, 3}, {1, 4}},
+    // M2006: 电流, id 1-8, rx 0x200+id, 低组 0x200, 高组 0x1FF
+    {M2006_RAW_PER_AMP, M2006_MAX_CURRENT, 1, 8, 0x200, 4, {0, 3}, {1, 4}},
+    // GM6020: 电压, id 1-7, rx 0x204+id, 低组 0x1FF, 高组 0x2FF
+    {GM6020_RAW_PER_VOLT, GM6020_MAX_VOLTAGE, 1, 7, 0x204, 4, {1, 4}, {2, 5}},
+    // GM6020_CURRENT: 电流, id 1-7, rx 0x204+id, 低组 0x1FE, 高组 0x2FE
+    {GM6020_CURRENT_RAW_PER_AMP, GM6020_CURRENT_MAX, 1, 7, 0x204, 4, {6, 8}, {7, 9}},
+};
+
+static_assert(sizeof(TYPE_INFO) / sizeof(TYPE_INFO[0]) == static_cast<uint8_t>(DjiMotorType::GM6020_CURRENT) + 1,
+              "TYPE_INFO must cover all DjiMotorType values");
+
+} // namespace
+
+#ifdef CAN2
+extern CAN_HandleTypeDef hcan1;
+#endif
+
+namespace {
+
+bool IsCan2([[maybe_unused]] CAN_HandleTypeDef* handle) {
+#ifdef CAN2
+    return handle != &hcan1;
+#else
+    return false;
+#endif
+}
+
+} // namespace
+
 // ---- 构造函数 ----
 DjiDriver::DjiDriver(const DjiDriverConfig& cfg)
     : motor_type_(cfg.motor_type)
 {
-    // 物理量→原始值换算
-    using namespace dji_motor;
-    switch (motor_type_) {
-    case DjiMotorType::M3508:
-        physical_to_raw_ = M3508_RAW_PER_AMP;
-        max_physical_    = M3508_MAX_CURRENT;
-        break;
-    case DjiMotorType::M2006:
-        physical_to_raw_ = M2006_RAW_PER_AMP;
-        max_physical_    = M2006_MAX_CURRENT;
-        break;
-    case DjiMotorType::GM6020:
-        physical_to_raw_ = GM6020_RAW_PER_VOLT;
-        max_physical_    = GM6020_MAX_VOLTAGE;
-        break;
+    const auto& info = TYPE_INFO[static_cast<uint8_t>(motor_type_)];
+    uint8_t id = cfg.motor_id;
+
+    // ID 范围校验
+    if (id < info.min_id || id > info.max_id)
+        DEBUG_DEADLOCK("[DjiDriver] motor_id out of valid range");
+
+    // 物理量换算参数
+    physical_to_raw_ = info.raw_per_unit;
+    max_physical_    = info.max_physical;
+
+    // 分组计算
+    uint8_t can_idx = IsCan2(cfg.can_handle) ? 1 : 0;
+    if (id <= info.id_split) {
+        group_idx_  = info.group_lo[can_idx];
+        msg_offset_ = (id - info.min_id) * 2;
+    } else {
+        group_idx_  = info.group_hi[can_idx];
+        msg_offset_ = (id - info.id_split - 1) * 2;
     }
 
-    // 计算分组
-    SetupGrouping(cfg);
+    // RX ID 计算 + 同总线重复检测
+    uint32_t rx_id = info.rx_id_base + id;
 
-    // 计算 RX ID
-    uint32_t rx_id = 0;
-    switch (motor_type_) {
-    case DjiMotorType::M3508:
-    case DjiMotorType::M2006:
-        rx_id = 0x200 + cfg.motor_id;
-        break;
-    case DjiMotorType::GM6020:
-        rx_id = 0x204 + cfg.motor_id;
-        break;
+    static uint32_t registered_rx[2][MAX_MOTORS] = {};
+    static uint8_t registered_cnt[2] = {};
+    for (uint8_t i = 0; i < registered_cnt[can_idx]; ++i) {
+        if (registered_rx[can_idx][i] == rx_id)
+            DEBUG_DEADLOCK("[DjiDriver] duplicate rx_id on same CAN bus");
     }
+    if (registered_cnt[can_idx] < MAX_MOTORS)
+        registered_rx[can_idx][registered_cnt[can_idx]++] = rx_id;
 
     // 创建 SAL CAN 实例（生命周期由 SAL 静态 vector 管理）
     // tx_id 设为本组的 StdId，用于 FlushAll 时复用此实例发送
@@ -59,42 +108,6 @@ DjiDriver::DjiDriver(const DjiDriverConfig& cfg)
         tx_groups_[group_idx_].sender = can_;
     }
     tx_groups_[group_idx_].enabled = true;
-}
-
-// ---- 分组计算 ----
-void DjiDriver::SetupGrouping(const DjiDriverConfig& cfg) {
-    uint8_t id = cfg.motor_id;  // 1-based
-    bool is_can2 = false;
-
-#ifdef CAN2
-    extern CAN_HandleTypeDef hcan1;
-    is_can2 = (cfg.can_handle != &hcan1);
-#endif
-
-    uint8_t base = is_can2 ? 3 : 0;  // CAN2 组偏移
-
-    switch (cfg.motor_type) {
-    case DjiMotorType::M3508:
-    case DjiMotorType::M2006:
-        if (id >= 1 && id <= 4) {
-            group_idx_ = base + 0;           // 0x200 组
-            msg_offset_ = (id - 1) * 2;     // 帧内字节偏移
-        } else {
-            group_idx_ = base + 1;           // 0x1FF 组
-            msg_offset_ = (id - 5) * 2;
-        }
-        break;
-
-    case DjiMotorType::GM6020:
-        if (id >= 1 && id <= 4) {
-            group_idx_ = base + 1;           // 0x1FF 组
-            msg_offset_ = (id - 1) * 2;
-        } else {
-            group_idx_ = base + 2;           // 0x2FF 组
-            msg_offset_ = (id - 5) * 2;
-        }
-        break;
-    }
 }
 
 // ---- 设置输出 (物理量 → CAN 原始值) ----

@@ -14,24 +14,27 @@ inline constexpr float CURRENT_SMOOTH_COEF = 0.9f;
 enum class DjiMotorType : uint8_t {
     M3508 = 0,
     M2006,
-    GM6020,
+    GM6020,          // 电压控制 (0x1FF/0x2FF)
+    GM6020_CURRENT,  // 电流控制 (0x1FE/0x2FE)
 };
 
-/// DJI 电机物理参数（SetOutput 输入单位: M3508/M2006 为安培, GM6020 为伏特）
+/// DJI 电机物理参数（SetOutput 输入单位: M3508/M2006 为安培, GM6020 为伏特, GM6020_CURRENT 为安培）
 namespace dji_motor {
 inline constexpr float M3508_MAX_CURRENT  = 20.0f;             // A
 inline constexpr float M3508_RAW_PER_AMP  = 16384.0f / 20.0f;  // ≈819.2
 inline constexpr float M2006_MAX_CURRENT  = 10.0f;             // A
 inline constexpr float M2006_RAW_PER_AMP  = 10000.0f / 10.0f;  // =1000.0
-inline constexpr float GM6020_MAX_VOLTAGE = 24.0f;             // V
-inline constexpr float GM6020_RAW_PER_VOLT = 30000.0f / 24.0f; // =1250.0
+inline constexpr float GM6020_MAX_VOLTAGE  = 24.0f;              // V
+inline constexpr float GM6020_RAW_PER_VOLT = 30000.0f / 24.0f;  // =1250.0
+inline constexpr float GM6020_CURRENT_MAX  = 3.0f;               // A
+inline constexpr float GM6020_CURRENT_RAW_PER_AMP = 16384.0f / 3.0f;  // ≈5461.3
 } // namespace dji_motor
 
 /// DJI 电机驱动配置
 struct DjiDriverConfig {
     DjiMotorType motor_type = DjiMotorType::M3508;
     CAN_HandleTypeDef* can_handle = nullptr;
-    uint8_t motor_id = 1;  // 电调/拨码 ID, 1-8(M3508/M2006), 1-7(GM6020)
+    uint8_t motor_id = 1;  // 电调/拨码 ID, 1-8(M3508/M2006), 1-7(GM6020/GM6020_CURRENT)
 };
 
 /// DJI 电机驱动（CAN 协议编解码 + 批量发送）
@@ -41,22 +44,26 @@ struct DjiDriverConfig {
 ///   - 将控制量写入分组缓冲区
 ///   - 静态 FlushAll() 批量发送所有 CAN 帧
 ///
-/// 分组规则 (6 个 TxGroup):
+/// 分组规则 (10 个 TxGroup):
 ///   Group 0: CAN1, 0x200, M3508/M2006 ID 1-4
-///   Group 1: CAN1, 0x1FF, M3508/M2006 ID 5-8, GM6020 ID 1-4
-///   Group 2: CAN1, 0x2FF, GM6020 ID 5-7
+///   Group 1: CAN1, 0x1FF, M3508/M2006 ID 5-8, GM6020 电压 ID 1-4
+///   Group 2: CAN1, 0x2FF, GM6020 电压 ID 5-7
 ///   Group 3: CAN2, 0x200, M3508/M2006 ID 1-4
-///   Group 4: CAN2, 0x1FF, M3508/M2006 ID 5-8, GM6020 ID 1-4
-///   Group 5: CAN2, 0x2FF, GM6020 ID 5-7
+///   Group 4: CAN2, 0x1FF, M3508/M2006 ID 5-8, GM6020 电压 ID 1-4
+///   Group 5: CAN2, 0x2FF, GM6020 电压 ID 5-7
+///   Group 6: CAN1, 0x1FE, GM6020 电流 ID 1-4
+///   Group 7: CAN1, 0x2FE, GM6020 电流 ID 5-7
+///   Group 8: CAN2, 0x1FE, GM6020 电流 ID 1-4
+///   Group 9: CAN2, 0x2FE, GM6020 电流 ID 5-7
 class DjiDriver {
 public:
     static constexpr uint8_t MAX_MOTORS   = 12;
-    static constexpr uint8_t GROUP_COUNT  = 6;
+    static constexpr uint8_t GROUP_COUNT  = 10;
     static constexpr uint16_t OFFLINE_THRESHOLD = 100;  // 100 次 Tick 未收到反馈视为离线
 
     explicit DjiDriver(const DjiDriverConfig& cfg);
 
-    /// 设置控制输出（M3508/M2006: 安培, GM6020: 伏特），Driver 内部换算为 CAN 原始值
+    /// 设置控制输出（M3508/M2006: 安培, GM6020: 伏特, GM6020_CURRENT: 安培），Driver 内部换算为 CAN 原始值
     void SetOutput(float output);
 
     /// 获取反馈数据
@@ -79,9 +86,6 @@ private:
     /// CAN 反馈解码 (ISR context)
     void DecodeFeedback(const uint8_t* data);
 
-    /// 计算发送分组索引和帧内偏移
-    void SetupGrouping(const DjiDriverConfig& cfg);
-
     // ---- 发送分组 ----
     struct TxGroup {
         uint8_t data[8] = {};               // 发送缓冲区
@@ -91,8 +95,10 @@ private:
 
     static TxGroup tx_groups_[GROUP_COUNT];
     static constexpr uint16_t GROUP_STD_IDS[GROUP_COUNT] = {
-        0x200, 0x1FF, 0x2FF,  // CAN1
-        0x200, 0x1FF, 0x2FF,  // CAN2
+        0x200, 0x1FF, 0x2FF,  // CAN1 电压
+        0x200, 0x1FF, 0x2FF,  // CAN2 电压
+        0x1FE, 0x2FE,         // CAN1 电流
+        0x1FE, 0x2FE,         // CAN2 电流
     };
 
     // ---- 实例成员 ----
