@@ -60,8 +60,8 @@ inline constexpr float IMU_PRE_G_NORM           = 9.8909f;
 
 // ======================== 裁判系统 ========================
 
-#define REFEREE_UART_HANDLE      huart6  // TODO: 确认实际串口
-#define VIDEO_LINK_UART_HANDLE   huart1  // TODO: 确认实际串口 (与视觉共用时需二选一)
+#define REFEREE_UART_HANDLE      huart6  // 常规链路 (底盘板, 115200)
+#define VIDEO_LINK_UART_HANDLE   huart1  // 图传链路 (云台板, 921600)
 
 // ======================== 视觉通信 ========================
 
@@ -201,9 +201,9 @@ inline constexpr uint16_t COMM_BASE_RX_ID = COMM_CHASSIS2GIMBAL_BASE_ID;
 #endif
 
 // ======================== VOFA 调试绘图 ========================
-
-#define VOFA_ENABLED
-#define VOFA_UART_HANDLE    huart6
+// 注意: VOFA 与视觉共用 huart1, 二选一
+// #define VOFA_ENABLED
+// #define VOFA_UART_HANDLE    huart1
 
 // ======================== IMU 安装方向 ========================
 
