@@ -7,47 +7,50 @@ namespace referee {
 
 // ======================== 帧格式常量 ========================
 
-inline constexpr uint8_t  SOF         = 0xA5;
-inline constexpr uint16_t HEADER_LEN  = 5;   // SOF(1) + data_length(2) + seq(1) + CRC8(1)
-inline constexpr uint16_t CMD_ID_LEN  = 2;
-inline constexpr uint16_t CRC16_LEN   = 2;
-inline constexpr uint16_t MAX_DATA_LEN = 300; // 0x0310 自定义 UI 最大 300B
+inline constexpr uint8_t  SOF         = 0xA5;  ///< 帧头起始字节
+inline constexpr uint16_t HEADER_LEN  = 5;     ///< 帧头长度: SOF(1) + data_length(2) + seq(1) + CRC8(1)
+inline constexpr uint16_t CMD_ID_LEN  = 2;     ///< 命令码长度
+inline constexpr uint16_t CRC16_LEN   = 2;     ///< 帧尾 CRC16 长度
+inline constexpr uint16_t MAX_DATA_LEN = 300;  ///< 最大 data 段长度 (0x0310 自定义客户端)
 inline constexpr uint16_t MAX_FRAME_LEN = HEADER_LEN + CMD_ID_LEN + MAX_DATA_LEN + CRC16_LEN;
 
 // ======================== CMD ID 定义 ========================
+// 格式: 服务器/主控→机器人 (接收), 机器人→服务器/选手端 (发送)
 
-inline constexpr uint16_t CMD_GAME_STATUS     = 0x0001;  // 11B
-inline constexpr uint16_t CMD_GAME_RESULT     = 0x0002;  //  1B
-inline constexpr uint16_t CMD_GAME_ROBOT_HP   = 0x0003;  // 16B (V1.2.0 仅己方)
-inline constexpr uint16_t CMD_EVENT_DATA      = 0x0101;  //  4B
-inline constexpr uint16_t CMD_REFEREE_WARN    = 0x0104;  //  3B
-inline constexpr uint16_t CMD_DART_INFO       = 0x0105;  //  3B
-inline constexpr uint16_t CMD_ROBOT_STATUS    = 0x0201;  // 13B
-inline constexpr uint16_t CMD_POWER_HEAT      = 0x0202;  // 14B
-inline constexpr uint16_t CMD_ROBOT_POS       = 0x0203;  // 16B
-inline constexpr uint16_t CMD_BUFF            = 0x0204;  //  8B
-inline constexpr uint16_t CMD_HURT_DATA       = 0x0206;  //  1B
-inline constexpr uint16_t CMD_SHOOT_DATA      = 0x0207;  //  7B
-inline constexpr uint16_t CMD_PROJECTILE_ALW  = 0x0208;  //  8B
-inline constexpr uint16_t CMD_RFID_STATUS     = 0x0209;  //  5B
-inline constexpr uint16_t CMD_GROUND_POS      = 0x020B;  // 40B
-inline constexpr uint16_t CMD_SENTRY_INFO     = 0x020D;  //  6B
-inline constexpr uint16_t CMD_INTERACTION     = 0x0301;  // ≤118B (可变)
-inline constexpr uint16_t CMD_CUSTOM_CTRL     = 0x0302;  // 30B
-inline constexpr uint16_t CMD_MAP_COMMAND     = 0x0303;  // 15B
-inline constexpr uint16_t CMD_CUSTOM_CLIENT   = 0x0310;  // ≤300B (可变)
-inline constexpr uint16_t CMD_CLIENT_CMD      = 0x0311;  // 12B
+inline constexpr uint16_t CMD_GAME_STATUS     = 0x0001;  ///< 比赛状态 (11B, 1Hz)
+inline constexpr uint16_t CMD_GAME_RESULT     = 0x0002;  ///< 比赛结果 (1B, 结束触发)
+inline constexpr uint16_t CMD_GAME_ROBOT_HP   = 0x0003;  ///< 己方血量 (16B, 3Hz, V1.2.0 仅己方)
+inline constexpr uint16_t CMD_EVENT_DATA      = 0x0101;  ///< 场地事件 (4B, 1Hz)
+inline constexpr uint16_t CMD_REFEREE_WARN    = 0x0104;  ///< 裁判警告 (3B, 判罚触发/1Hz)
+inline constexpr uint16_t CMD_DART_INFO       = 0x0105;  ///< 飞镖信息 (3B, 1Hz)
+inline constexpr uint16_t CMD_ROBOT_STATUS    = 0x0201;  ///< 机器人状态 (13B, 10Hz)
+inline constexpr uint16_t CMD_POWER_HEAT      = 0x0202;  ///< 功率热量 (14B, 10Hz)
+inline constexpr uint16_t CMD_ROBOT_POS       = 0x0203;  ///< 机器人位置 (16B, 1Hz)
+inline constexpr uint16_t CMD_BUFF            = 0x0204;  ///< 增益 (8B, 3Hz)
+inline constexpr uint16_t CMD_HURT_DATA       = 0x0206;  ///< 伤害状态 (1B, 受伤触发)
+inline constexpr uint16_t CMD_SHOOT_DATA      = 0x0207;  ///< 射击信息 (7B, 发射触发)
+inline constexpr uint16_t CMD_PROJECTILE_ALW  = 0x0208;  ///< 允许发弹量 (8B, 10Hz)
+inline constexpr uint16_t CMD_RFID_STATUS     = 0x0209;  ///< RFID 状态 (5B, 3Hz)
+inline constexpr uint16_t CMD_GROUND_POS      = 0x020B;  ///< 全场位置 (40B, 1Hz, 哨兵专用)
+inline constexpr uint16_t CMD_SENTRY_INFO     = 0x020D;  ///< 哨兵信息同步 (6B, 1Hz)
+inline constexpr uint16_t CMD_INTERACTION     = 0x0301;  ///< 机器人交互数据 (<=118B, 30Hz 上限)
+inline constexpr uint16_t CMD_CUSTOM_CTRL     = 0x0302;  ///< 自定义控制器 (30B, 30Hz, 图传链路)
+inline constexpr uint16_t CMD_MAP_COMMAND     = 0x0303;  ///< 小地图交互 (15B, 选手端触发)
+inline constexpr uint16_t CMD_CUSTOM_CLIENT   = 0x0310;  ///< 自定义客户端 (<=300B, 50Hz, 图传链路)
+inline constexpr uint16_t CMD_CLIENT_CMD      = 0x0311;  ///< 自定义客户端指令 (12B, 75Hz, 图传链路)
 
 // ======================== 0x0301 交互数据子命令 ========================
+// 机器人交互数据内容数据段最大 112B (帧总长 127B - 9B 帧开销 - 6B 数据段头)
+// 整个 0x0301 上行频率最大 30Hz, 需合理安排带宽
 
-inline constexpr uint16_t SUB_CMD_DELETE_LAYER  = 0x0100;
-inline constexpr uint16_t SUB_CMD_DRAW_1        = 0x0101;
-inline constexpr uint16_t SUB_CMD_DRAW_2        = 0x0102;
-inline constexpr uint16_t SUB_CMD_DRAW_5        = 0x0103;
-inline constexpr uint16_t SUB_CMD_DRAW_7        = 0x0104;
-inline constexpr uint16_t SUB_CMD_DRAW_STRING   = 0x0110;
-inline constexpr uint16_t SUB_CMD_SENTRY_CMD    = 0x0120;
-inline constexpr uint16_t SUB_CMD_RADAR_CMD     = 0x0121;
+inline constexpr uint16_t SUB_CMD_DELETE_LAYER  = 0x0100;  ///< 删除图层 (2B)
+inline constexpr uint16_t SUB_CMD_DRAW_1        = 0x0101;  ///< 绘制 1 个图形 (15B)
+inline constexpr uint16_t SUB_CMD_DRAW_2        = 0x0102;  ///< 绘制 2 个图形 (30B)
+inline constexpr uint16_t SUB_CMD_DRAW_5        = 0x0103;  ///< 绘制 5 个图形 (75B)
+inline constexpr uint16_t SUB_CMD_DRAW_7        = 0x0104;  ///< 绘制 7 个图形 (105B)
+inline constexpr uint16_t SUB_CMD_DRAW_STRING   = 0x0110;  ///< 绘制字符串 (45B = 15B 配置 + 30B 字符)
+inline constexpr uint16_t SUB_CMD_SENTRY_CMD    = 0x0120;  ///< 哨兵自主决策指令 (4B)
+inline constexpr uint16_t SUB_CMD_RADAR_CMD     = 0x0121;  ///< 雷达自主决策指令 (1B)
 
 // ======================== 各 cmd_id 的 data_length ========================
 // 返回 0 表示可变长度或未知 cmd_id (跳过长度校验)
@@ -199,207 +202,221 @@ inline void Crc16Append(uint8_t* data, uint16_t len) {
 
 // ======================== 协议原始 packed 结构体 ========================
 // 仅在 ProcessFrame 内部 memcpy 使用, 与 V1.2.0 字节对齐
+// @warning 这些结构体仅用于协议解析, 不要直接作为消费端数据结构
 
 #pragma pack(push, 1)
 
+/// 帧头 (5B)
 struct FrameHeader {
-    uint8_t  sof;
-    uint16_t data_length;
-    uint8_t  seq;
-    uint8_t  crc8;
+    uint8_t  sof;          ///< 起始字节, 固定 0xA5
+    uint16_t data_length;  ///< data 段长度
+    uint8_t  seq;          ///< 包序号
+    uint8_t  crc8;         ///< 帧头 CRC8
 };
 
-// 0x0001 比赛状态 (11B)
+/// 0x0001 比赛状态 (11B)
 struct WireGameStatus {
-    uint8_t  game_type_progress;  // bit 0-3: type, bit 4-7: progress
-    uint16_t stage_remain_time;
-    uint64_t sync_time_stamp;
+    uint8_t  game_type_progress;  ///< bit 0-3: 比赛类型, bit 4-7: 比赛阶段
+    uint16_t stage_remain_time;   ///< 当前阶段剩余时间 (s)
+    uint64_t sync_time_stamp;     ///< UNIX 时间戳
 };
 
-// 0x0002 比赛结果 (1B)
+/// 0x0002 比赛结果 (1B)
 struct WireGameResult {
-    uint8_t winner;
+    uint8_t winner;  ///< 0=平局, 1=红方胜利, 2=蓝方胜利
 };
 
-// 0x0003 机器人血量 (16B) — V1.2.0 仅己方
+/// 0x0003 己方机器人血量 (16B, V1.2.0 仅己方)
 struct WireGameRobotHp {
-    uint16_t ally_1_robot_hp;
-    uint16_t ally_2_robot_hp;
-    uint16_t ally_3_robot_hp;
-    uint16_t ally_4_robot_hp;
-    uint16_t reserved;
-    uint16_t ally_7_robot_hp;
-    uint16_t ally_outpost_hp;
-    uint16_t ally_base_hp;
+    uint16_t ally_1_robot_hp;  ///< 己方英雄
+    uint16_t ally_2_robot_hp;  ///< 己方工程
+    uint16_t ally_3_robot_hp;  ///< 己方步兵 3
+    uint16_t ally_4_robot_hp;  ///< 己方步兵 4
+    uint16_t reserved;         ///< 保留
+    uint16_t ally_7_robot_hp;  ///< 己方哨兵
+    uint16_t ally_outpost_hp;  ///< 己方前哨站
+    uint16_t ally_base_hp;     ///< 己方基地
 };
 
-// 0x0101 场地事件 (4B)
+/// 0x0101 场地事件 (4B)
 struct WireEventData {
-    uint32_t event_type;
+    uint32_t event_type;  ///< bit 编码, 详见 EventData 注释
 };
 
-// 0x0104 裁判警告 (3B)
+/// 0x0104 裁判警告 (3B)
 struct WireRefereeWarning {
-    uint8_t level;
-    uint8_t offending_robot_id;
-    uint8_t count;
+    uint8_t level;               ///< 1=双方黄牌, 2=黄牌, 3=红牌, 4=判负
+    uint8_t offending_robot_id;  ///< 犯规机器人 ID (判负/双方黄牌时为 0)
+    uint8_t count;               ///< 违规次数
 };
 
-// 0x0105 飞镖信息 (3B)
+/// 0x0105 飞镖信息 (3B)
 struct WireDartInfo {
-    uint8_t  dart_remaining_time;
-    uint16_t dart_info;
+    uint8_t  dart_remaining_time;  ///< 飞镖发射剩余时间 (s)
+    uint16_t dart_info;            ///< bit 编码, 详见 DartInfo 注释
 };
 
-// 0x0201 机器人状态 (13B)
+/// 0x0201 机器人状态 (13B)
 struct WireRobotStatus {
-    uint8_t  robot_id;
-    uint8_t  robot_level;
-    uint16_t current_hp;
-    uint16_t maximum_hp;
-    uint16_t shooter_barrel_cooling_value;
-    uint16_t shooter_barrel_heat_limit;
-    uint16_t chassis_power_limit;
-    uint8_t  power_management_gimbal_output : 1;
-    uint8_t  power_management_chassis_output : 1;
-    uint8_t  power_management_shooter_output : 1;
+    uint8_t  robot_id;                       ///< 红方 1-11, 蓝方 101-111
+    uint8_t  robot_level;                    ///< 等级 1-3
+    uint16_t current_hp;                     ///< 当前血量
+    uint16_t maximum_hp;                     ///< 血量上限
+    uint16_t shooter_barrel_cooling_value;   ///< 射击热量每秒冷却值
+    uint16_t shooter_barrel_heat_limit;      ///< 射击热量上限
+    uint16_t chassis_power_limit;            ///< 底盘功率上限 (W)
+    uint8_t  power_management_gimbal_output  : 1;  ///< gimbal 口 (0=无, 1=24V)
+    uint8_t  power_management_chassis_output : 1;  ///< chassis 口 (0=无, 1=24V)
+    uint8_t  power_management_shooter_output : 1;  ///< shooter 口 (0=无, 1=24V)
 };
 
-// 0x0202 功率热量 (14B) — V1.2.0
+/// 0x0202 功率热量 (14B, V1.2.0)
+/// @note 前 8B 保留, 不再包含 chassis_power
 struct WirePowerHeat {
-    uint16_t reserved1;
-    uint16_t reserved2;
-    float    reserved3;                  // 4B float, 非 uint16_t!
-    uint16_t buffer_energy;
-    uint16_t shooter_17mm_barrel_heat;   // 仅一个 17mm 字段
-    uint16_t shooter_42mm_barrel_heat;
+    uint16_t reserved1;                    ///< 保留
+    uint16_t reserved2;                    ///< 保留
+    float    reserved3;                    ///< 保留 (4B float, 非 uint16_t)
+    uint16_t buffer_energy;                ///< 缓冲能量 (J)
+    uint16_t shooter_17mm_barrel_heat;     ///< 17mm 射击热量
+    uint16_t shooter_42mm_barrel_heat;     ///< 42mm 射击热量
 };
 
-// 0x0203 机器人位置 (16B)
+/// 0x0203 机器人位置 (16B)
 struct WireRobotPos {
-    float x;
-    float y;
-    float angle;
-    // 注意: 实际16B = 12B float + 4B 保留? 按协议确认
-    // V1.2.0: x(4)+y(4)+angle(4) = 12B... 但声明 16B
-    // 这里按 16B 声明, 多出的 4B 作为 padding
-    float reserved;
+    float x;         ///< x 坐标 (m)
+    float y;         ///< y 坐标 (m)
+    float angle;     ///< 测速模块朝向 (度, 正北为 0°)
+    float reserved;  ///< 保留 (凑齐 16B)
 };
 
-// 0x0204 增益 (8B)
+/// 0x0204 增益 (8B)
 struct WireBuff {
-    uint8_t  recovery_buff;
-    uint16_t cooling_buff;        // uint16_t, 非 uint8_t!
-    uint8_t  defence_buff;
-    uint8_t  vulnerability_buff;
-    uint16_t attack_buff;
-    uint8_t  remaining_energy;    // V1.2.0 剩余能量反馈
+    uint8_t  recovery_buff;       ///< 回血增益 (百分比)
+    uint16_t cooling_buff;        ///< 冷却增益 (直接值, uint16_t)
+    uint8_t  defence_buff;        ///< 防御增益 (百分比)
+    uint8_t  vulnerability_buff;  ///< 负防御增益 (百分比)
+    uint16_t attack_buff;         ///< 攻击增益 (百分比)
+    uint8_t  remaining_energy;    ///< 剩余能量反馈 (bit 编码), 详见 Buff 注释
 };
 
-// 0x0206 伤害状态 (1B)
+/// 0x0206 伤害状态 (1B)
 struct WireHurtData {
-    uint8_t armor_id_hurt_type;  // bit 0-3: armor_id, bit 4-7: hurt_type
+    uint8_t armor_id_hurt_type;  ///< bit 0-3: 装甲板 ID, bit 4-7: 伤害类型
 };
 
-// 0x0207 射击信息 (7B)
+/// 0x0207 射击信息 (7B)
 struct WireShootData {
-    uint8_t bullet_type;
-    uint8_t shooter_number;
-    uint8_t launching_frequency;
-    float   initial_speed;
+    uint8_t bullet_type;          ///< 1=17mm, 2=42mm
+    uint8_t shooter_number;       ///< 1=17mm 机构, 3=42mm 机构
+    uint8_t launching_frequency;  ///< 射频 (Hz)
+    float   initial_speed;        ///< 初速度 (m/s)
 };
 
-// 0x0208 允许发弹量 (8B)
+/// 0x0208 允许发弹量 (8B)
 struct WireProjectileAllowance {
-    uint16_t projectile_allowance_17mm;
-    uint16_t projectile_allowance_42mm;
-    uint16_t remaining_gold_coin;
-    uint16_t projectile_allowance_fortress;  // V1.2.0 堡垒储备发弹量
+    uint16_t projectile_allowance_17mm;      ///< 自身 17mm 允许发弹量
+    uint16_t projectile_allowance_42mm;      ///< 42mm 允许发弹量
+    uint16_t remaining_gold_coin;            ///< 剩余金币
+    uint16_t projectile_allowance_fortress;  ///< 堡垒储备 17mm 允许发弹量
 };
 
-// 0x0209 RFID 状态 (5B)
+/// 0x0209 RFID 状态 (5B)
 struct WireRfidStatus {
-    uint32_t rfid_status;
-    uint8_t  rfid_status_2;  // 隧道等额外 RFID 点位
+    uint32_t rfid_status;    ///< bit 编码, 详见 RfidStatus 注释
+    uint8_t  rfid_status_2;  ///< 隧道对方侧 RFID 点位
 };
 
-// 0x020B 全场机器人位置 (40B)
+/// 0x020B 全场地面机器人位置 (40B, 哨兵专用)
 struct WireGroundRobotPosition {
-    float hero_x;
-    float hero_y;
-    float engineer_x;
-    float engineer_y;
-    float standard_3_x;
-    float standard_3_y;
-    float standard_4_x;
-    float standard_4_y;
-    float reserved_x;
-    float reserved_y;
+    float hero_x;        ///< 己方英雄 x (m)
+    float hero_y;        ///< 己方英雄 y (m)
+    float engineer_x;    ///< 己方工程 x (m)
+    float engineer_y;    ///< 己方工程 y (m)
+    float standard_3_x;  ///< 己方步兵 3 x (m)
+    float standard_3_y;  ///< 己方步兵 3 y (m)
+    float standard_4_x;  ///< 己方步兵 4 x (m)
+    float standard_4_y;  ///< 己方步兵 4 y (m)
+    float reserved_x;    ///< 保留
+    float reserved_y;    ///< 保留
 };
 
-// 0x020D 哨兵信息同步 (6B)
+/// 0x020D 哨兵信息同步 (6B)
 struct WireSentryInfo {
-    uint32_t sentry_info;
-    uint16_t sentry_info_2;
+    uint32_t sentry_info;    ///< bit 编码, 详见 SentryInfo 注释
+    uint16_t sentry_info_2;  ///< bit 编码, 详见 SentryInfo::sentry_info_2
 };
 
-// 0x0302 自定义控制器 (30B)
+/// 0x0302 自定义控制器 (30B, 图传链路)
 struct WireCustomController {
-    uint8_t data[30];
+    uint8_t data[30];  ///< 30B 自定义数据
 };
 
 // ======================== 交互数据 (0x0301) 发送用 ========================
 
-// 交互数据头 (6B): 所有 0x0301 子命令共用
+/// 交互数据头 (6B): 所有 0x0301 子命令共用
 struct WireInteractionHeader {
-    uint16_t sub_cmd_id;
-    uint16_t sender_id;
-    uint16_t receiver_id;
+    uint16_t sub_cmd_id;   ///< 子内容 ID (0x0100~0x02FF)
+    uint16_t sender_id;    ///< 发送者机器人 ID (需与自身匹配)
+    uint16_t receiver_id;  ///< 接收者 ID (仅限己方通信, 选手端=robot_id+0x0100)
 };
 
-// 图形删除操作 (2B): sub_cmd_id = 0x0100
+/// 图形删除操作 (2B): sub_cmd_id = 0x0100
 struct WireGraphicDelete {
-    uint8_t delete_type;  // 0=空, 1=删除图层, 2=删除所有
-    uint8_t layer;        // 0~9
+    /// - 0: 空操作
+    /// - 1: 删除指定图层
+    /// - 2: 删除所有图层
+    uint8_t delete_type;
+
+    /// 图层号 0~9
+    uint8_t layer;
 };
 
-// 图形元素 (15B): sub_cmd_id = 0x0101~0x0104
+/// 图形元素 (15B): sub_cmd_id = 0x0101~0x0104
+/// @note 屏幕坐标: (0,0)=左下角, (1920,1080)=右上角
 struct WireGraphicData {
-    uint8_t  figure_name[3];
-    uint32_t operate_type : 3;
-    uint32_t figure_type  : 3;
-    uint32_t layer        : 4;
-    uint32_t color        : 4;
-    uint32_t details_a    : 9;
-    uint32_t details_b    : 9;
-    uint32_t width        : 10;
-    uint32_t start_x      : 11;
-    uint32_t start_y      : 11;
-    uint32_t details_c    : 10;
-    uint32_t details_d    : 11;
-    uint32_t details_e    : 11;
+    uint8_t  figure_name[3];          ///< 图形名 (3B, 用于删除/修改索引)
+    uint32_t operate_type : 3;        ///< 操作: 0=空, 1=增加, 2=修改, 3=删除
+    uint32_t figure_type  : 3;        ///< 类型: 0=直线, 1=矩形, 2=正圆, 3=椭圆, 4=圆弧, 5=浮点, 6=整型, 7=字符
+    uint32_t layer        : 4;        ///< 图层 0~9
+    uint32_t color        : 4;        ///< 颜色: 0=己方色, 1=黄, 2=绿, 3=橙, 4=紫红, 5=粉, 6=青, 7=黑, 8=白
+    uint32_t details_a    : 9;        ///< 圆弧起始角度 / 浮点字体大小 / 整型字体大小 / 字符字体大小
+    uint32_t details_b    : 9;        ///< 圆弧终止角度 / 字符长度(<=30)
+    uint32_t width        : 10;       ///< 线宽 (建议字体:线宽 = 10:1)
+    uint32_t start_x      : 11;       ///< 起点/圆心 x
+    uint32_t start_y      : 11;       ///< 起点/圆心 y
+    uint32_t details_c    : 10;       ///< 圆半径 / 浮点数低10bit / 整型低10bit
+    uint32_t details_d    : 11;       ///< 终点x / 椭圆rx / 浮点数中11bit / 整型中11bit
+    uint32_t details_e    : 11;       ///< 终点y / 椭圆ry / 浮点数高11bit / 整型高11bit
 };
 
-// 哨兵自主决策指令 (4B): sub_cmd_id = 0x0120
+/// 哨兵自主决策指令 (4B): sub_cmd_id = 0x0120, receiver_id = 0x8080 (服务器)
 struct WireSentryCmd {
+    /// bit 编码:
+    /// - bit 0: 确认复活 (0=不复活, 1=确认)
+    /// - bit 1: 确认兑换立即复活 (0=不兑换, 1=兑换)
+    /// - bit 2-12: 将要兑换的发弹量值 (需单调递增)
+    /// - bit 13-16: 远程兑换发弹量请求次数 (需单调递增, 每次+1)
+    /// - bit 17-20: 远程兑换血量请求次数 (需单调递增, 每次+1)
+    /// - bit 21-22: 修改姿态 (1=进攻, 2=防御, 3=移动, 默认 3)
+    /// - bit 23: 确认使能量机关进入激活状态 (1=确认)
     uint32_t sentry_cmd;
 };
 
-// 选手端小地图接收机器人消息 (34B): cmd_id = 0x0308
+/// 选手端小地图接收机器人消息 (34B): cmd_id = 0x0308
 struct WireCustomInfo {
-    uint16_t sender_id;
-    uint16_t receiver_id;
-    uint8_t  user_data[30];  // UTF-16 编码
+    uint16_t sender_id;       ///< 发送者机器人 ID
+    uint16_t receiver_id;     ///< 接收者选手端 ID
+    uint8_t  user_data[30];   ///< UTF-16 编码字符数据
 };
 
-// 小地图路径 (103B): cmd_id = 0x0307
+/// 小地图路径 (103B): cmd_id = 0x0307, 频率上限 1Hz
 struct WireMapPath {
-    uint8_t  intention;       // 1=攻击, 2=防守, 3=移动
-    uint16_t start_x;        // 单位: dm
-    uint16_t start_y;
-    int8_t   delta_x[49];
-    int8_t   delta_y[49];
-    uint16_t sender_id;
+    uint8_t  intention;       ///< 1=攻击, 2=防守, 3=移动
+    uint16_t start_x;         ///< 起始 x, 单位: dm
+    uint16_t start_y;         ///< 起始 y, 单位: dm
+    int8_t   delta_x[49];    ///< 路径增量 x
+    int8_t   delta_y[49];    ///< 路径增量 y
+    uint16_t sender_id;       ///< 发送者机器人 ID
 };
 
 #pragma pack(pop)
