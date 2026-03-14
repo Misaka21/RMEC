@@ -1,17 +1,20 @@
 #pragma once
 
-#include "referee_def.hpp"
+namespace referee { class RefereeParser; }
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-void RefereeTaskStart();
-void VideoLinkTaskStart();
+void RefereeInit();
+void VideoLinkInit();
 
 #ifdef __cplusplus
 }
 #endif
 
 bool RefereeIsOnline();
-const referee::RefereeData& GetRefereeData();
+
+/// 获取常规链路 RefereeParser 指针 (用于 UI 发送等)
+/// @note 云台板/底盘板未编译常规链路时返回 nullptr
+referee::RefereeParser* GetRefereeParser();

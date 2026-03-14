@@ -4,22 +4,17 @@
 
 #include <cstdint>
 
-#define REFEREE_COMPILER_BARRIER() __asm volatile("" ::: "memory")
-
 namespace referee {
 
 // ======================== RefereeParser ========================
-/// 裁判系统协议解析器: 字节级状态机 + CRC 校验 + SeqLock
+/// 裁判系统协议解析器: 字节级状态机 + CRC 校验
 ///
 /// **传输无关**: 不持有 UART, 通过注入的函数指针发送
 /// App 层负责创建传输实例并将 rx 回调接到 Parse()
 ///
 /// **接收路径** (ISR 上下文):
 ///   传输 Rx ISR → Parse(buf, len) → 状态机逐字节 → CRC 校验
-///   → SeqLock 写 data_
-///
-/// **读取路径** (Task 上下文):
-///   Read(out) → SeqLock 一致性快照读, 返回 true 表示成功
+///   → 更新 data_ → publish_func_(data_) 直接发布到 Topic
 ///
 /// **发送路径** (Task 上下文):
 ///   Send(cmd_id, payload, len) → 组帧 + CRC → send_func_()
@@ -33,22 +28,17 @@ public:
     /// 发送函数签名: 由 App 层注入, 通常绑定到 UartSend
     using SendFunc = void(*)(uint8_t* buf, uint16_t len);
 
-    explicit RefereeParser(SendFunc send = nullptr);
+    /// 发布回调签名: ISR 上下文, 每解析完一帧调用一次
+    /// 典型用法: `[](const RefereeData& d) { referee_topic.Publish(d); }`
+    using PublishFunc = void(*)(const RefereeData&);
+
+    /// @param send    发送函数 (Task 上下文调用)
+    /// @param publish ISR 回调: 每解析完一帧后调用, 用于直接发布到 Topic
+    explicit RefereeParser(SendFunc send = nullptr, PublishFunc publish = nullptr);
 
     /// ISR 调用: DMA IDLE 收到的原始字节投递到状态机
     /// @note 支持多帧/半帧, 逐字节推进
     void Parse(const uint8_t* buf, uint16_t len);
-
-    /// Task 上下文: SeqLock 一致性快照读
-    /// @return true 表示读到完整一致的数据, false 表示 ISR 正在写 (下次重试)
-    bool Read(RefereeData& out) const {
-        uint32_t s1 = seq_;
-        REFEREE_COMPILER_BARRIER();
-        if (s1 & 1u) return false;  // ISR 正在写
-        out = data_;
-        REFEREE_COMPILER_BARRIER();
-        return s1 == seq_;
-    }
 
     /// 编码并发送原始帧 (含帧头 CRC8 + 帧尾 CRC16)
     /// @param cmd_id 命令码 (如 CMD_INTERACTION)
@@ -82,9 +72,9 @@ public:
     }
 
 private:
-    SendFunc send_func_ = nullptr;
+    SendFunc    send_func_    = nullptr;
+    PublishFunc publish_func_ = nullptr;
     RefereeData data_{};
-    volatile uint32_t seq_ = 0;  ///< SeqLock 序列号: 奇数=ISR 正在写, 偶数=安全
 
     // 帧解析状态机
     enum class State : uint8_t { WAIT_SOF, HEADER, DATA };
@@ -94,9 +84,7 @@ private:
     uint16_t data_length_ = 0;
     uint16_t frame_len_   = 0;  ///< 整帧预期长度
 
-    void ProcessFrame();  ///< CRC 全帧校验 → dispatch by cmd_id → 更新 data_
+    void ProcessFrame();  ///< CRC 全帧校验 → dispatch by cmd_id → 更新 data_ → 发布
 };
 
 } // namespace referee
-
-#undef REFEREE_COMPILER_BARRIER

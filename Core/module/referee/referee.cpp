@@ -5,8 +5,8 @@
 
 namespace referee {
 
-RefereeParser::RefereeParser(SendFunc send)
-    : send_func_(send) {}
+RefereeParser::RefereeParser(SendFunc send, PublishFunc publish)
+    : send_func_(send), publish_func_(publish) {}
 
 // ======================== 字节级状态机 ========================
 // DMA IDLE 可能一次给出多帧或半帧, 逐字节推进
@@ -79,10 +79,6 @@ void RefereeParser::ProcessFrame() {
 
     // 数据区起始指针
     const uint8_t* data = rx_buf_ + HEADER_LEN + CMD_ID_LEN;
-
-    // SeqLock 写开始
-    ++seq_;
-    __asm volatile("" ::: "memory");
 
     switch (cmd_id) {
     case CMD_GAME_STATUS: {
@@ -258,9 +254,8 @@ void RefereeParser::ProcessFrame() {
         break;
     }
 
-    // SeqLock 写结束
-    __asm volatile("" ::: "memory");
-    ++seq_;
+    // 每帧解析完成后直接发布 (ISR 上下文, 跟 Remote 同模式)
+    if (publish_func_) publish_func_(data_);
 }
 
 // ======================== 发送 ========================
@@ -269,10 +264,9 @@ void RefereeParser::Send(uint16_t cmd_id, const uint8_t* payload, uint16_t len) 
     if (!send_func_) return;
 
     uint16_t frame_len = HEADER_LEN + CMD_ID_LEN + len + CRC16_LEN;
-    if (frame_len > sizeof(rx_buf_)) return;  // 复用 rx_buf_ 作为 tx 临时缓冲
-
     // 帧头
     uint8_t tx_buf[512]{};
+    if (frame_len > sizeof(tx_buf)) return;
     tx_buf[0] = SOF;
     tx_buf[1] = len & 0xFF;
     tx_buf[2] = (len >> 8) & 0xFF;

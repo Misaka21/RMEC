@@ -59,8 +59,8 @@ extern "C" void RobotInit() {
     RemoteInit();
     MotorTaskStart();
     VisionTaskStart();
-    RefereeTaskStart();
-    VideoLinkTaskStart();
+    RefereeInit();
+    VideoLinkInit();
     RobotTaskStart();
 #elif defined(GIMBAL_BOARD)
     // 云台板: IMU + 遥控器 + 云台/发射电机 + 双板通信 + 视觉 + 图传
@@ -69,13 +69,13 @@ extern "C" void RobotInit() {
     MotorTaskStart();
     CommTaskStart();
     VisionTaskStart();
-    VideoLinkTaskStart();
+    VideoLinkInit();
     RobotTaskStart();
 #elif defined(CHASSIS_BOARD)
     // 底盘板: 底盘电机 + 双板通信 + 裁判系统 (IMU/遥控器数据由云台板转发)
     MotorTaskStart();
     CommTaskStart();
-    RefereeTaskStart();
+    RefereeInit();
 #endif
     DaemonTaskStart();
     VofaTaskStart();
