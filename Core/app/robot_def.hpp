@@ -200,6 +200,10 @@ inline constexpr uint16_t COMM_BASE_TX_ID = COMM_GIMBAL2CHASSIS_BASE_ID;
 inline constexpr uint16_t COMM_BASE_RX_ID = COMM_CHASSIS2GIMBAL_BASE_ID;
 #endif
 
+// ======================== 日志串口 ========================
+// 注意: LOG 与 VOFA 共用串口, 由用户保证分时使用
+#define LOG_UART_HANDLE     huart1
+
 // ======================== VOFA 调试绘图 ========================
 // 注意: VOFA 与视觉共用 huart1, 二选一
 // #define VOFA_ENABLED

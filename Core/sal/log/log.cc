@@ -1,18 +1,53 @@
 #include <cstdio>
+#include <cstdarg>
+#include <cstring>
 
 #include "log.h"
+#include "sal_usart.h"
 
-void BSPLogInit()
+// // ==================== 旧版 RTT 实现 ====================
+// #include "SEGGER_RTT.h"
+//
+// void BSPLogInit()
+// {
+//     SEGGER_RTT_Init();
+// }
+//
+// int PrintLog(const char *fmt, ...)
+// {
+//     va_list args;
+//     va_start(args, fmt);
+//     int n = SEGGER_RTT_vprintf(BUFFER_INDEX, fmt, &args);
+//     va_end(args);
+//     return n;
+// }
+
+// ==================== UART 实现 ====================
+
+static sal::UartInstance* log_uart = nullptr;
+static char log_buf[256];
+
+void BSPLogInit(UART_HandleTypeDef* handle)
 {
-    SEGGER_RTT_Init();
+    static sal::UartInstance::UartConfig cfg{};
+    cfg.handle  = handle;
+    cfg.tx_type = sal::UartTxType::BLOCK;
+    log_uart = new sal::UartInstance(cfg);
 }
 
 int PrintLog(const char *fmt, ...)
 {
+    if (!log_uart) return 0;
+
     va_list args;
     va_start(args, fmt);
-    int n = SEGGER_RTT_vprintf(BUFFER_INDEX, fmt, &args); // 一次可以开启多个buffer(多个终端),我们只用一个
+    int n = vsnprintf(log_buf, sizeof(log_buf), fmt, args);
     va_end(args);
+
+    if (n > 0) {
+        log_uart->UartSend(reinterpret_cast<uint8_t*>(log_buf),
+                           n < (int)sizeof(log_buf) ? n : (int)sizeof(log_buf) - 1);
+    }
     return n;
 }
 

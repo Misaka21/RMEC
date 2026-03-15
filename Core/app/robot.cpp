@@ -1,4 +1,5 @@
 #include "TaskManager.hpp"
+#include "log.h"
 
 // App 层
 #include "robot_def.hpp"
@@ -53,6 +54,8 @@ using Dt7Remote       = remote::Remote<remote::Dt7Protocol>;
 // ============================================================
 
 extern "C" void RobotInit() {
+    BSPLogInit(&LOG_UART_HANDLE);
+
 #if defined(ONE_BOARD)
     // 单板: 全部任务, 无需双板通信
     InsTaskStart();
