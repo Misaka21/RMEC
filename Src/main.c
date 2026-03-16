@@ -112,6 +112,7 @@ int main(void)
   MX_RTC_Init();
   MX_TIM1_Init();
   MX_TIM10_Init();
+  MX_USB_DEVICE_Init();  // USB 必须在 USART1 之前初始化 (避免 PA10 引脚冲突)
   MX_USART1_UART_Init();
   MX_USART6_UART_Init();
   MX_TIM8_Init();
@@ -120,7 +121,6 @@ int main(void)
   MX_SPI2_Init();
   MX_CRC_Init();
   MX_DAC_Init();
-  MX_USB_DEVICE_Init();  // USB 必须在 RobotInit 之前初始化 (vision_task 可能依赖 USB)
   /* USER CODE BEGIN 2 */
   DWTInit_C(168);
   RobotInit();
