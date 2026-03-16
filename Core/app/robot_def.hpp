@@ -66,8 +66,8 @@ inline constexpr float IMU_PRE_G_NORM           = 9.8909f;
 // ======================== 视觉通信 ========================
 
 // 传输方式 (二选一, 默认 UART)
-#define VISION_USE_UART
-// #define VISION_USE_VCP
+// #define VISION_USE_UART
+#define VISION_USE_VCP
 
 #ifdef VISION_USE_UART
 #define VISION_UART_HANDLE  huart1
