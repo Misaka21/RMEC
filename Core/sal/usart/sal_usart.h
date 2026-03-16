@@ -8,7 +8,7 @@
 #include <functional>
 #include <vector>
 
-#define UART_MX_INS_NUM 3          // 取决于开发板引脚设计与MCU架构,RoboMaster C型开发板为1,3,6
+#define UART_MX_INS_NUM 6          // 取决于开发板引脚设计与MCU架构,RoboMaster C型开发板为1,3,6
 #define UART_MX_RX_BUFFER_SIZE 256 // 接收缓冲区大小 @todo: 是否让接收缓冲区由module提供?
 namespace sal
 {

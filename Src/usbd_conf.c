@@ -112,9 +112,8 @@ void HAL_PCD_MspDeInit(PCD_HandleTypeDef* pcdHandle)
     /**USB_OTG_FS GPIO Configuration
     PA12     ------> USB_OTG_FS_DP
     PA11     ------> USB_OTG_FS_DM
-    PA10     ------> USB_OTG_FS_ID
     */
-    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_12|GPIO_PIN_11|GPIO_PIN_10);
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_12|GPIO_PIN_11);
 
     /* Peripheral interrupt Deinit*/
     HAL_NVIC_DisableIRQ(OTG_FS_IRQn);
