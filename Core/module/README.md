@@ -13,7 +13,7 @@
 
 ```
 module/
-├── general_def.hpp        # 数学常量 (PI, 角度转换) + LPF + Clamp
+├── math.hpp               # 数学常量 (PI, 角度转换) + LPF + Clamp (namespace math)
 ├── topic.hpp              # Topic<T> 单写者多读者 SeqLock 发布订阅
 ├── algorithm/             # PID 控制器, 四元数 EKF, AHRS 数学工具
 ├── imu/                   # BMI088 驱动 + INS 姿态解算
@@ -27,5 +27,5 @@ module/
 
 | 文件 | 说明 |
 |---|---|
-| `general_def.hpp` | `PI`, `RAD_2_DEGREE`, `ECD_ANGLE_COEF`, `Clamp()`, `LowPassFilter()` |
+| `math.hpp` | `math::PI`, `math::RAD_2_DEGREE`, `math::ECD_ANGLE_COEF`, `math::Clamp()`, `math::LowPassFilter()` |
 | `topic.hpp` | `Topic<T, MaxSubs>` SeqLock 无锁发布订阅 + `TopicReader<T>` 独立追踪序号 |

@@ -93,7 +93,7 @@ Core/module/                        ← 模块层 (纯组件, 换车不改)
 │   └── super_cap.hpp/.cpp
 │
 ├── topic.hpp                       # [已实现] SeqLock 发布订阅
-└── general_def.hpp                 # [已实现] 数学常量 + 工具函数
+└── math.hpp                        # [已实现] 数学常量 + 工具函数 (namespace math)
 
 Core/app/                           ← 应用层 (编排 + 机器人逻辑)
 │
@@ -173,7 +173,7 @@ Core/app/                           ← 应用层 (编排 + 机器人逻辑)
 │  驱动:   Bmi088  Motor<D,C>  DjiDriver                           │
 │  通信:   Remote  Referee  Vision  SuperCap                        │
 │  服务:   Daemon  Buzzer                                           │
-│  基础:   Topic<T>  general_def                                    │
+│  基础:   Topic<T>  math                                           │
 ├──────────────────────────────────────────────────────────────────┤
 │                         SAL 层                                    │
 │  CAN  SPI  UART  GPIO  PWM  DWT  TaskManager  Flash  Log  USB   │
