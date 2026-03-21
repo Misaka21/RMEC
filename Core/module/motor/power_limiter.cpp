@@ -1,5 +1,5 @@
 #include "power_limiter.hpp"
-#include "general_def.hpp"
+#include "math.hpp"
 
 #include <cmath>
 
@@ -58,7 +58,7 @@ void PowerLimiter::UpdateEnergyLoop(float referee_power_limit,
     }
 
     // maxPower = clamp(referee_limit, full_max_power, base_max_power)
-    max_power_ = Clamp(referee_power_limit, full_max_power_, base_max_power_);
+    max_power_ = math::Clamp(referee_power_limit, full_max_power_, base_max_power_);
 }
 
 // ---- RLS 更新 ----
@@ -158,7 +158,7 @@ void PowerLimiter::Limit(PowerMotorState* states, uint8_t count) {
     }
     constexpr float ERR_LOW  = 15.0f;
     constexpr float ERR_HIGH = 20.0f;
-    const float err_conf = Clamp((sum_error - ERR_LOW) / (ERR_HIGH - ERR_LOW),
+    const float err_conf = math::Clamp((sum_error - ERR_LOW) / (ERR_HIGH - ERR_LOW),
                                  0.0f, 1.0f);
 
     // 5. 混合权重: blend(equal, cmd_proportion, errorConfidence)
@@ -195,6 +195,6 @@ void PowerLimiter::Limit(PowerMotorState* states, uint8_t count) {
         if (std::fabs(new_output) < std::fabs(states[i].pid_output))
             states[i].pid_output = new_output;
         // clamp
-        states[i].pid_output = ClampAbs(states[i].pid_output, states[i].max_output);
+        states[i].pid_output = math::ClampAbs(states[i].pid_output, states[i].max_output);
     }
 }

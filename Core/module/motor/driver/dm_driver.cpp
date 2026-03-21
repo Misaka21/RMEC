@@ -40,11 +40,11 @@ void DmDriver::SetMitOutput(float pos, float vel,
     using namespace dm_motor;
     using namespace mit_codec;
 
-    torque = Clamp(torque, T_MIN, T_MAX);
-    pos    = Clamp(pos,    P_MIN, P_MAX);
-    vel    = Clamp(vel,    V_MIN, V_MAX);
-    kp     = Clamp(kp,    KP_MIN, KP_MAX);
-    kd     = Clamp(kd,    KD_MIN, KD_MAX);
+    torque = math::Clamp(torque, T_MIN, T_MAX);
+    pos    = math::Clamp(pos,    P_MIN, P_MAX);
+    vel    = math::Clamp(vel,    V_MIN, V_MAX);
+    kp     = math::Clamp(kp,    KP_MIN, KP_MAX);
+    kd     = math::Clamp(kd,    KD_MIN, KD_MAX);
 
     PackMitFrame(tx_buf_,
                  FloatToUint(pos, P_MIN, P_MAX, 16),
@@ -104,6 +104,6 @@ void DmDriver::DecodeFeedback(const uint8_t* data) {
 
     // 映射到 MotorMeasure（角度/速度转为 deg 单位）
     auto& m = measure_;
-    m.total_angle = fb.position * RAD_2_DEGREE;
-    m.speed_aps   = fb.velocity * RAD_2_DEGREE;
+    m.total_angle = fb.position * math::RAD_2_DEGREE;
+    m.speed_aps   = fb.velocity * math::RAD_2_DEGREE;
 }

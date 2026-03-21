@@ -1,6 +1,6 @@
 #include "quaternion_ekf.hpp"
 #include "ahrs_math.hpp"
-#include "general_def.hpp"
+#include "math.hpp"
 
 #include <cmath>
 #include <cstring>
@@ -286,7 +286,7 @@ void QuaternionEkf::ComputeGainAndUpdate() {
     // 零飘行 (4,5) 乘 OrientationCosine 加权
     for (int i = 4; i < 6; i++)
         for (int j = 0; j < 3; j++)
-            K[i][j] *= orientation_cosine_[i - 4] / (PI / 2.0f);
+            K[i][j] *= orientation_cosine_[i - 4] / (math::PI / 2.0f);
 
     // ---- correction = K * innovation ----
 
@@ -318,10 +318,10 @@ void QuaternionEkf::ExtractEuler() {
     float q2 = output_.q[2], q3 = output_.q[3];
 
     output_.euler[0] = atan2f(2.0f * (q0 * q3 + q1 * q2),
-                              2.0f * (q0 * q0 + q1 * q1) - 1.0f) * RAD_2_DEGREE;
+                              2.0f * (q0 * q0 + q1 * q1) - 1.0f) * math::RAD_2_DEGREE;
     output_.euler[1] = atan2f(2.0f * (q0 * q1 + q2 * q3),
-                              2.0f * (q0 * q0 + q3 * q3) - 1.0f) * RAD_2_DEGREE;
-    output_.euler[2] = asinf(-2.0f * (q1 * q3 - q0 * q2)) * RAD_2_DEGREE;
+                              2.0f * (q0 * q0 + q3 * q3) - 1.0f) * math::RAD_2_DEGREE;
+    output_.euler[2] = asinf(-2.0f * (q1 * q3 - q0 * q2)) * math::RAD_2_DEGREE;
 
     // 多圈 yaw 追踪
     if (output_.euler[0] - yaw_last_ > 180.0f)

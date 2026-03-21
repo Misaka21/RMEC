@@ -3,7 +3,7 @@
 #include "vision_protocol.hpp"
 #include "robot_def.hpp"
 #include "robot_topics.hpp"
-#include "general_def.hpp"
+#include "math.hpp"
 #include "TaskManager.hpp"
 #include "daemon.hpp"
 
@@ -81,9 +81,9 @@ void VisionTaskStart() {
         .task_func = []() {
             InsData ins{};
             if (ins_reader->Read(ins)) {
-                tx_state.yaw   = ins.euler[0] * DEGREE_2_RAD;
-                tx_state.pitch = ins.euler[1] * DEGREE_2_RAD;
-                tx_state.roll  = ins.euler[2] * DEGREE_2_RAD;
+                tx_state.yaw   = ins.euler[0] * math::DEGREE_2_RAD;
+                tx_state.pitch = ins.euler[1] * math::DEGREE_2_RAD;
+                tx_state.roll  = ins.euler[2] * math::DEGREE_2_RAD;
             }
 
             vis->Send(tx_state);
@@ -93,7 +93,7 @@ void VisionTaskStart() {
 
 void VisionSetMode(vision::AimMode mode, vision::EnemyColor color,
                    float bullet_speed) {
-    tx_state.aim_mode     = mode;
+    tx_state.aim_mode     = vision::AimMode::AUTO_AIM;
     tx_state.enemy_color  = color;
     tx_state.bullet_speed = bullet_speed;
 }

@@ -45,7 +45,7 @@ LkDriver::LkDriver(const LkDriverConfig& cfg) {
 
 // ---- 设置输出 (安培 → CAN 原始值) ----
 void LkDriver::SetOutput(float output) {
-    output = Clamp(output, -max_current_, max_current_);
+    output = math::Clamp(output, -max_current_, max_current_);
     auto value = static_cast<int16_t>(output * raw_per_amp_);
 
     auto& group = tx_groups_[group_idx_];
@@ -84,7 +84,7 @@ void LkDriver::DecodeFeedback(const uint8_t* data) {
     // 电流 LPF (int16, big-endian: [3]=high, [2]=low)
     int16_t raw_current = static_cast<int16_t>(
         (static_cast<uint16_t>(data[3]) << 8) | data[2]);
-    m.real_current = static_cast<int16_t>(LowPassFilter(
+    m.real_current = static_cast<int16_t>(math::LowPassFilter(
         static_cast<float>(m.real_current),
         static_cast<float>(raw_current),
         CURRENT_SMOOTH_COEF));
@@ -92,7 +92,7 @@ void LkDriver::DecodeFeedback(const uint8_t* data) {
     // 速度 LPF (int16 dps → deg/s，与 speed_aps 单位一致)
     int16_t raw_speed = static_cast<int16_t>(
         (static_cast<uint16_t>(data[5]) << 8) | data[4]);
-    m.speed_aps = LowPassFilter(
+    m.speed_aps = math::LowPassFilter(
         m.speed_aps,
         static_cast<float>(raw_speed),
         SPEED_SMOOTH_COEF);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "general_def.hpp"
+#include "math.hpp"
 
 #include <cmath>
 #include <cstdint>

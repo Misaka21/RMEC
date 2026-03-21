@@ -2,7 +2,7 @@
 #include "TaskManager.hpp"
 #include "robot_def.hpp"
 #include "robot_topics.hpp"
-#include "general_def.hpp"
+#include "math.hpp"
 #include "vision_task.hpp"
 
 // ======================== 灵敏度常量 ========================
@@ -77,8 +77,8 @@ static void RobotTick() {
 
         if (vision_active) {
             // 视觉接管: 绝对目标角度 (视觉发弧度, PID 用度)
-            yaw_target   = vision.yaw * RAD_2_DEGREE;
-            pitch_target = vision.pitch * RAD_2_DEGREE;
+            yaw_target   = vision.yaw * math::RAD_2_DEGREE;
+            pitch_target = vision.pitch * math::RAD_2_DEGREE;
         } else {
             // 遥控器控制: 增量式
             float ch_yaw   = static_cast<float>(rc.ch_r_x) / CH_FULL_SCALE;
@@ -88,7 +88,7 @@ static void RobotTick() {
             pitch_target += ch_pitch * PITCH_SENSITIVITY  * ROBOT_DT;
         }
 
-        pitch_target = Clamp(pitch_target, PITCH_MIN_ANGLE, PITCH_MAX_ANGLE);
+        pitch_target = math::Clamp(pitch_target, PITCH_MIN_ANGLE, PITCH_MAX_ANGLE);
     }
 
     last_mode = mode;

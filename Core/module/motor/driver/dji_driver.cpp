@@ -112,7 +112,7 @@ DjiDriver::DjiDriver(const DjiDriverConfig& cfg)
 
 // ---- 设置输出 (物理量 → CAN 原始值) ----
 void DjiDriver::SetOutput(float output) {
-    output = Clamp(output, -max_physical_, max_physical_);
+    output = math::Clamp(output, -max_physical_, max_physical_);
     auto value = static_cast<int16_t>(output * physical_to_raw_);
     auto& group = tx_groups_[group_idx_];
     group.data[msg_offset_]     = static_cast<uint8_t>(value >> 8);
@@ -144,15 +144,15 @@ void DjiDriver::DecodeFeedback(const uint8_t* data) {
     // 速度 LPF (rpm → deg/s)
     int16_t raw_speed = static_cast<int16_t>(
         (static_cast<uint16_t>(data[2]) << 8) | data[3]);
-    m.speed_aps = LowPassFilter(
+    m.speed_aps = math::LowPassFilter(
         m.speed_aps,
-        RPM_2_ANGLE_PER_SEC * static_cast<float>(raw_speed),
+        math::RPM_2_ANGLE_PER_SEC * static_cast<float>(raw_speed),
         SPEED_SMOOTH_COEF);
 
     // 电流 LPF
     int16_t raw_current = static_cast<int16_t>(
         (static_cast<uint16_t>(data[4]) << 8) | data[5]);
-    m.real_current = static_cast<int16_t>(LowPassFilter(
+    m.real_current = static_cast<int16_t>(math::LowPassFilter(
         static_cast<float>(m.real_current),
         static_cast<float>(raw_current),
         CURRENT_SMOOTH_COEF));
@@ -160,5 +160,5 @@ void DjiDriver::DecodeFeedback(const uint8_t* data) {
     m.temperature = data[6];
 
     // 多圈角度追踪
-    m.UpdateAngle(ECD_ANGLE_COEF);
+    m.UpdateAngle(math::ECD_ANGLE_COEF);
 }

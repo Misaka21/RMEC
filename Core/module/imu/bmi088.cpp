@@ -1,6 +1,6 @@
 #include "bmi088.hpp"
 #include "bmi088_reg.hpp"
-#include "general_def.hpp"
+#include "math.hpp"
 #include "sal_dwt.h"
 
 #include <cmath>
@@ -275,7 +275,7 @@ void Bmi088::HeaterCtrl(float dt) {
     if (heat_pwm_ == nullptr)
         return;
     float out = heat_pid_.Calculate(data_.temperature, heat_target_temp_, dt);
-    uint32_t pwm = static_cast<uint32_t>(Clamp(out, 0.0f, static_cast<float>(UINT16_MAX)));
+    uint32_t pwm = static_cast<uint32_t>(math::Clamp(out, 0.0f, static_cast<float>(UINT16_MAX)));
     heat_pwm_->SetCompare(pwm);
 }
 

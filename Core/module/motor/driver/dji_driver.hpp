@@ -2,7 +2,7 @@
 
 #include "sal_can.h"
 #include "motor_measure.hpp"
-#include "general_def.hpp"
+#include "math.hpp"
 
 #include <cstdint>
 

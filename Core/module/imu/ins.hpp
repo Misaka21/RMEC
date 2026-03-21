@@ -3,7 +3,7 @@
 #include "ins_data.hpp"
 #include "quaternion_ekf.hpp"
 #include "ahrs_math.hpp"
-#include "general_def.hpp"
+#include "math.hpp"
 
 #include <cstring>
 

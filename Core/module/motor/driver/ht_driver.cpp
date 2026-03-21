@@ -34,7 +34,7 @@ void HtDriver::SetOutput(float torque) {
     using namespace ht_motor;
     using namespace mit_codec;
 
-    torque = Clamp(torque, T_MIN, T_MAX);
+    torque = math::Clamp(torque, T_MIN, T_MAX);
 
     // HT 电机特殊: 只更新 buf[6:7] 的力矩字段，buf[0:5] 保持校准时的值
     uint16_t t = FloatToUint(torque, T_MIN, T_MAX, 12);
@@ -49,11 +49,11 @@ void HtDriver::SetMitOutput(float pos, float vel,
     using namespace ht_motor;
     using namespace mit_codec;
 
-    pos    = Clamp(pos,    P_MIN, P_MAX);
-    vel    = Clamp(vel,    V_MIN, V_MAX);
-    kp     = Clamp(kp,    KP_MIN, KP_MAX);
-    kd     = Clamp(kd,    KD_MIN, KD_MAX);
-    torque = Clamp(torque, T_MIN, T_MAX);
+    pos    = math::Clamp(pos,    P_MIN, P_MAX);
+    vel    = math::Clamp(vel,    V_MIN, V_MAX);
+    kp     = math::Clamp(kp,    KP_MIN, KP_MAX);
+    kd     = math::Clamp(kd,    KD_MIN, KD_MAX);
+    torque = math::Clamp(torque, T_MIN, T_MAX);
 
     PackMitFrame(tx_buf_,
                  FloatToUint(pos, P_MIN, P_MAX, 16),
@@ -143,6 +143,6 @@ void HtDriver::DecodeFeedback(const uint8_t* data) {
 
     // 映射到 MotorMeasure（角度/速度转为 deg 单位）
     auto& m = measure_;
-    m.total_angle = fb.position * RAD_2_DEGREE;
-    m.speed_aps   = fb.velocity * RAD_2_DEGREE;
+    m.total_angle = fb.position * math::RAD_2_DEGREE;
+    m.speed_aps   = fb.velocity * math::RAD_2_DEGREE;
 }

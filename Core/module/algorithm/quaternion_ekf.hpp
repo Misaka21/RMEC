@@ -2,7 +2,7 @@
 
 #include "matrix.h"
 #ifdef PI
-#undef PI // arm_math.h 定义了 PI 宏, 与 general_def.hpp 的 constexpr 冲突
+#undef PI // arm_math.h 定义了 PI 宏, 与 math.hpp 的 constexpr 冲突
 #endif
 
 #include <cstdint>

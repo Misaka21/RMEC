@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+namespace math {
+
 // ---- 数学常量 ----
 inline constexpr float PI                  = 3.1415926535f;
 inline constexpr float PI2                 = PI * 2.0f;
@@ -27,3 +29,5 @@ inline constexpr float ClampAbs(float val, float limit) {
 inline constexpr float LowPassFilter(float prev, float new_val, float coef) {
     return (1.0f - coef) * prev + coef * new_val;
 }
+
+} // namespace math
