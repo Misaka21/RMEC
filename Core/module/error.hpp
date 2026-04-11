@@ -64,6 +64,24 @@ inline Error FromSalError(sal::Error e) {
 }
 
 // ============================================================
+// 断言 (前置声明, Result<T> 依赖)
+// ============================================================
+
+void ReportAssertionFailure(const char* file, int line, const char* msg);
+
+#ifdef ENABLE_DEBUG_ASSERT
+    #define ASSERT(cond, msg) \
+        do { \
+            if (!(cond)) { \
+                error::ReportAssertionFailure(__FILE__, __LINE__, msg); \
+                for (;;) {} \
+            } \
+        } while (0)
+#else
+    #define ASSERT(cond, msg) ((void)0)
+#endif
+
+// ============================================================
 // Result<T> - 轻量级结果类型
 // ============================================================
 
@@ -197,22 +215,6 @@ template<typename T = void>
     return Result<T>(e);
 }
 
-// ============================================================
-// 断言与调试
-// ============================================================
-
-#ifdef ENABLE_DEBUG_ASSERT
-    #define ASSERT(cond, msg) \
-        do { \
-            if (!(cond)) { \
-                error::ReportAssertionFailure(__FILE__, __LINE__, msg); \
-                for (;;) {} \
-            } \
-        } while (0)
-#else
-    #define ASSERT(cond, msg) ((void)0)
-#endif
-
 // 检查返回值的宏
 #define TRY(expr) \
     ({ \
@@ -243,9 +245,6 @@ void RecordError(Error e);
 const ErrorStats& GetErrorStats();
 void ResetErrorStats();
 
-// 报告断言失败 (内部使用)
-void ReportAssertionFailure(const char* file, int line, const char* msg);
-
 // ============================================================
 // 错误处理器
 // ============================================================
@@ -259,7 +258,8 @@ enum class RecoveryStrategy : uint8_t {
 };
 
 using ErrorHook = void(*)(Error, const char* context);
-using DelayHook = void(*)(uint32_t ms);  // 延迟回调，注入 FreeRTOS 或 HAL 延迟
+using DelayHook = void(*)(uint32_t ms);    // 延迟回调，注入 FreeRTOS 或 HAL 延迟
+using RebootHook = void(*)();              // 复位回调，注入 NVIC_SystemReset 等
 
 struct ErrorHandlerConfig {
     RecoveryStrategy strategy{RecoveryStrategy::RETRY};
@@ -267,7 +267,8 @@ struct ErrorHandlerConfig {
     uint32_t retry_delay_ms{10};
     ErrorHook on_error{nullptr};
     ErrorHook on_recovery{nullptr};
-    DelayHook delay_hook{nullptr};  // 如果为 null，重试时不延迟
+    DelayHook delay_hook{nullptr};     // 如果为 null，重试时不延迟
+    RebootHook reboot_hook{nullptr};   // 如果为 null，REBOOT 策略退化为 HALT
 };
 
 class ErrorHandler {

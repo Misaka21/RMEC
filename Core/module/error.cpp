@@ -51,8 +51,6 @@ void ReportAssertionFailure(const char* file, int line, const char* msg) {
     assert_info_.msg = msg;
 
     RecordError(Error::INVALID_STATE);
-
-    __BKPT(0);
 }
 
 // ============================================================
@@ -73,7 +71,7 @@ const ErrorStats& GetErrorStats() {
 }
 
 void ResetErrorStats() {
-    std::memset(&stats_, 0, sizeof(stats_));
+    stats_ = ErrorStats{};
 }
 
 // ============================================================
@@ -123,8 +121,9 @@ bool ErrorHandler::Handle(Error e, const char* context) {
         return false;
 
     case RecoveryStrategy::REBOOT:
-        NVIC_SystemReset();
-        return false;
+        if (cfg_.reboot_hook)
+            cfg_.reboot_hook();
+        return false;  // hook 为 null 时退化为 HALT
     }
 
     return false;
