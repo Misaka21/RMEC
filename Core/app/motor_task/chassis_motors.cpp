@@ -2,8 +2,6 @@
 #include "robot_def.hpp"
 #include "math.hpp"
 
-#include "can.h"
-
 void ChassisMotors::Init() {
     // 订阅命令 Topic
     cmd_reader_ = chassis_cmd_topic.Subscribe();

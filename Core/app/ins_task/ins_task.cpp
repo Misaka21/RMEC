@@ -7,9 +7,6 @@
 #include "TaskManager.hpp"
 #include "sal_dwt.h"
 
-#include "spi.h"
-#include "tim.h"
-
 #if defined(ONE_BOARD) || defined(GIMBAL_BOARD)
 
 static Bmi088* imu = nullptr;

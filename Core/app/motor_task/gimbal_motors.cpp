@@ -2,8 +2,6 @@
 #include "robot_def.hpp"
 #include "robot_topics.hpp"
 
-#include "can.h"
-
 void GimbalMotors::Init() {
     // 订阅 Topic
     cmd_reader_ = gimbal_cmd_topic.Subscribe();

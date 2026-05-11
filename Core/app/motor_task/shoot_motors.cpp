@@ -1,8 +1,6 @@
 #include "shoot_motors.hpp"
 #include "robot_def.hpp"
 
-#include "can.h"
-
 void ShootMotors::Init() {
     // 订阅命令 Topic
     cmd_reader_ = shoot_cmd_topic.Subscribe();

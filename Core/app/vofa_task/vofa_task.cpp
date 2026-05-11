@@ -5,7 +5,6 @@
 #include "vofa.hpp"
 #include "robot_def.hpp"
 #include "TaskManager.hpp"
-#include "usart.h"
 
 inline constexpr uint8_t VOFA_CHANNELS = 8;
 
