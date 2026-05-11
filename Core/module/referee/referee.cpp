@@ -8,6 +8,12 @@ namespace referee {
 RefereeParser::RefereeParser(SendFunc send, PublishFunc publish)
     : send_func_(send), publish_func_(publish) {}
 
+RefereeParser::RefereeParser(SendWithContextFunc send, void* context,
+                             PublishFunc publish)
+    : send_with_context_func_(send),
+      send_context_(context),
+      publish_func_(publish) {}
+
 // ======================== 字节级状态机 ========================
 // DMA IDLE 可能一次给出多帧或半帧, 逐字节推进
 
@@ -261,7 +267,7 @@ void RefereeParser::ProcessFrame() {
 // ======================== 发送 ========================
 
 void RefereeParser::Send(uint16_t cmd_id, const uint8_t* payload, uint16_t len) {
-    if (!send_func_) return;
+    if (!send_func_ && !send_with_context_func_) return;
 
     uint16_t frame_len = HEADER_LEN + CMD_ID_LEN + len + CRC16_LEN;
     // 帧头
@@ -285,7 +291,11 @@ void RefereeParser::Send(uint16_t cmd_id, const uint8_t* payload, uint16_t len) 
     // CRC16 整帧
     Crc16Append(tx_buf, frame_len);
 
-    send_func_(tx_buf, frame_len);
+    if (send_with_context_func_) {
+        send_with_context_func_(send_context_, tx_buf, frame_len);
+    } else {
+        send_func_(tx_buf, frame_len);
+    }
 }
 
 // ======================== 交互数据信封 ========================
@@ -320,6 +330,46 @@ void RefereeParser::SendSentryDecision(uint32_t sentry_cmd) {
     cmd.sentry_cmd = sentry_cmd;
     SendInteraction(SUB_CMD_SENTRY_CMD, 0x8080,
                     reinterpret_cast<const uint8_t*>(&cmd), sizeof(cmd));
+}
+
+// ======================== Referee UART module ========================
+
+Referee::Referee(const RefereeConfig& cfg, PublishFunc publish)
+    : parser_(SendThunk, this, publish) {
+    sal::UartInstance::UartConfig uart_cfg{};
+    uart_cfg.handle  = cfg.uart_handle;
+    uart_cfg.rx_size = cfg.rx_size;
+    uart_cfg.rx_type = cfg.rx_type;
+    uart_cfg.rx_cbk  = [this](uint8_t* buf, uint16_t len) {
+        OnReceive(buf, len);
+    };
+    uart_cfg.tx_type = cfg.tx_type;
+
+    uart_ = new sal::UartInstance(uart_cfg);
+    RestartRx();
+}
+
+void Referee::RestartRx() {
+    if (uart_) uart_->UartRestartRecv();
+}
+
+void Referee::SendThunk(void* context, uint8_t* buf, uint16_t len) {
+    auto* self = static_cast<Referee*>(context);
+    if (self) self->Send(buf, len);
+}
+
+void Referee::OnReceive(uint8_t* buf, uint16_t len) {
+    parser_.Parse(buf, len);
+}
+
+void Referee::Send(uint8_t* buf, uint16_t len) {
+    if (!uart_ || len > TX_BUFFER_SIZE) return;
+
+    auto* tx_buf = tx_buf_[tx_idx_];
+    tx_idx_ = static_cast<uint8_t>((tx_idx_ + 1) % TX_BUFFER_COUNT);
+
+    std::memcpy(tx_buf, buf, len);
+    uart_->UartSend(tx_buf, len);
 }
 
 } // namespace referee

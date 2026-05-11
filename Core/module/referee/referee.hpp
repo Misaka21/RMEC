@@ -1,6 +1,7 @@
 #pragma once
 
 #include "referee_def.hpp"
+#include "sal_usart.h"
 
 #include <cstdint>
 
@@ -9,8 +10,8 @@ namespace referee {
 // ======================== RefereeParser ========================
 /// 裁判系统协议解析器: 字节级状态机 + CRC 校验
 ///
-/// **传输无关**: 不持有 UART, 通过注入的函数指针发送
-/// App 层负责创建传输实例并将 rx 回调接到 Parse()
+/// **传输无关**: 不持有 UART, 通过注入的发送函数发送
+/// Referee 或 App 层负责创建传输实例并将 rx 回调接到 Parse()
 ///
 /// **接收路径** (ISR 上下文):
 ///   传输 Rx ISR → Parse(buf, len) → 状态机逐字节 → CRC 校验
@@ -25,8 +26,11 @@ namespace referee {
 
 class RefereeParser {
 public:
-    /// 发送函数签名: 由 App 层注入, 通常绑定到 UartSend
+    /// 发送函数签名: 由上层注入, 通常绑定到 UartSend
     using SendFunc = void(*)(uint8_t* buf, uint16_t len);
+
+    /// 带上下文的发送函数签名: 用于模块内绑定多个传输实例
+    using SendWithContextFunc = void(*)(void* context, uint8_t* buf, uint16_t len);
 
     /// 发布回调签名: ISR 上下文, 每解析完一帧调用一次
     /// 典型用法: `[](const RefereeData& d) { referee_topic.Publish(d); }`
@@ -35,6 +39,11 @@ public:
     /// @param send    发送函数 (Task 上下文调用)
     /// @param publish ISR 回调: 每解析完一帧后调用, 用于直接发布到 Topic
     explicit RefereeParser(SendFunc send = nullptr, PublishFunc publish = nullptr);
+
+    /// @param send    带上下文的发送函数 (Task 上下文调用)
+    /// @param context 发送函数上下文
+    /// @param publish ISR 回调: 每解析完一帧后调用, 用于直接发布到 Topic
+    RefereeParser(SendWithContextFunc send, void* context, PublishFunc publish = nullptr);
 
     /// ISR 调用: DMA IDLE 收到的原始字节投递到状态机
     /// @note 支持多帧/半帧, 逐字节推进
@@ -72,8 +81,10 @@ public:
     }
 
 private:
-    SendFunc    send_func_    = nullptr;
-    PublishFunc publish_func_ = nullptr;
+    SendFunc            send_func_             = nullptr;
+    SendWithContextFunc send_with_context_func_ = nullptr;
+    void*               send_context_          = nullptr;
+    PublishFunc         publish_func_          = nullptr;
     RefereeData data_{};
 
     // 帧解析状态机
@@ -85,6 +96,45 @@ private:
     uint16_t frame_len_   = 0;  ///< 整帧预期长度
 
     void ProcessFrame();  ///< CRC 全帧校验 → dispatch by cmd_id → 更新 data_ → 发布
+};
+
+// ======================== Referee ========================
+
+struct RefereeConfig {
+    UART_HandleTypeDef* uart_handle = nullptr;
+    uint16_t rx_size = 256;
+    sal::UartRxType rx_type = sal::UartRxType::DMA_IDLE;
+    sal::UartTxType tx_type = sal::UartTxType::IT;
+};
+
+/// 裁判系统 UART 模块: UART RX/TX + RefereeParser.
+/// App 层只负责传入硬件 handle、发布回调和离线策略。
+class Referee {
+public:
+    using PublishFunc = RefereeParser::PublishFunc;
+
+    explicit Referee(const RefereeConfig& cfg, PublishFunc publish = nullptr);
+    Referee(const Referee&) = delete;
+    Referee& operator=(const Referee&) = delete;
+
+    void RestartRx();
+
+    RefereeParser* Parser() { return &parser_; }
+    const RefereeParser* Parser() const { return &parser_; }
+
+private:
+    static constexpr uint8_t TX_BUFFER_COUNT = 4;
+    static constexpr uint16_t TX_BUFFER_SIZE = 512;
+
+    static void SendThunk(void* context, uint8_t* buf, uint16_t len);
+
+    void OnReceive(uint8_t* buf, uint16_t len);
+    void Send(uint8_t* buf, uint16_t len);
+
+    RefereeParser parser_;
+    sal::UartInstance* uart_ = nullptr;
+    uint8_t tx_buf_[TX_BUFFER_COUNT][TX_BUFFER_SIZE] = {};
+    uint8_t tx_idx_ = 0;
 };
 
 } // namespace referee
