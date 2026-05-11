@@ -1,6 +1,5 @@
 #include "vision_task.hpp"
 #include "vision_comm.hpp"
-#include "vision_protocol.hpp"
 #include "robot_def.hpp"
 #include "robot_topics.hpp"
 #include "math.hpp"
@@ -8,15 +7,6 @@
 #include "daemon.hpp"
 
 #if defined(ONE_BOARD) || defined(GIMBAL_BOARD)
-
-#ifdef VISION_USE_VCP
-#include "sal_usb.h"
-static sal::UsbInstance* usb = nullptr;
-#else
-#include "sal_usart.h"
-#include "usart.h"
-static sal::UartInstance* uart = nullptr;
-#endif
 
 static vision::VisionComm* vis = nullptr;
 static daemon::DaemonInstance* vis_daemon = nullptr;
@@ -35,47 +25,25 @@ void VisionTaskStart() {
         .period_ms  = 1,
 
         .init_func = []() {
-#ifdef VISION_USE_VCP
-            // ---- USB VCP 路径 ----
-            vis_daemon = new daemon::DaemonInstance({.timeout_ticks = 50});
-
-            vis = new vision::VisionComm(
-                [](uint8_t* buf, uint16_t len) { usb->Transmit(buf, len); },
-                [](const vision::VisionRxData& d) {
-                    vision_topic.Publish(d);
-                    vis_daemon->Reload();
-                });
-
-            sal::UsbInstance::UsbConfig usb_cfg{};
-            usb_cfg.rx_cbk = [](uint8_t* buf, uint16_t len) {
-                vis->OnReceive(buf, len);
-            };
-            usb = new sal::UsbInstance(usb_cfg);
-#else
-            // ---- UART 路径 ----
             vis_daemon = new daemon::DaemonInstance({
                 .timeout_ticks = 50,
-                .on_offline = [](void*) { uart->UartRestartRecv(); },
+                .on_offline = [](void*) { if (vis) vis->RestartRx(); },
             });
 
+            vision::VisionConfig cfg{};
+#ifdef VISION_USE_VCP
+            cfg.transport = vision::VisionTransport::USB_VCP;
+#else
+            cfg.transport = vision::VisionTransport::UART;
+            cfg.uart_handle = &VISION_UART_HANDLE;
+#endif
+
             vis = new vision::VisionComm(
-                [](uint8_t* buf, uint16_t len) { uart->UartSend(buf, len); },
+                cfg,
                 [](const vision::VisionRxData& d) {
                     vision_topic.Publish(d);
                     vis_daemon->Reload();
                 });
-
-            sal::UartInstance::UartConfig uart_cfg{};
-            uart_cfg.handle  = &VISION_UART_HANDLE;
-            uart_cfg.rx_size = vision::FRAME_SIZE;
-            uart_cfg.rx_type = sal::UartRxType::DMA_IDLE;
-            uart_cfg.rx_cbk  = [](uint8_t* buf, uint16_t len) {
-                vis->OnReceive(buf, len);
-            };
-            uart_cfg.tx_type = sal::UartTxType::IT;
-            uart = new sal::UartInstance(uart_cfg);
-            uart->UartRestartRecv();
-#endif
         },
 
         .task_func = []() {
