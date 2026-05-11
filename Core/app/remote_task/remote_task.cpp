@@ -5,8 +5,6 @@
 
 #if defined(ONE_BOARD) || defined(GIMBAL_BOARD)
 
-#include "usart.h"
-
 static Dt7Remote* rc = nullptr;
 static daemon::DaemonInstance* rc_daemon = nullptr;
 

@@ -64,6 +64,8 @@ public:
         uart_ = new sal::UartInstance(uart_cfg);
         uart_->UartRestartRecv();
     }
+    Remote(const Remote&) = delete;
+    Remote& operator=(const Remote&) = delete;
 
     /// 读取一致快照（无锁，可能因并发写返回 false）
     bool ReadSnapshot(Data& out, uint32_t* seq_out = nullptr) const {
@@ -103,7 +105,7 @@ private:
         if (on_publish_) on_publish_(curr);
     }
 
-    sal::UartInstance* uart_;
+    sal::UartInstance* uart_ = nullptr;
     PublishCallback on_publish_ = nullptr;
     Data data_{};
     Data last_data_{};
