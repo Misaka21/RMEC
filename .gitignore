@@ -45,3 +45,5 @@ cmake-build-*/
 
 # Claude Code
 .claude/
+
+build-tests/
