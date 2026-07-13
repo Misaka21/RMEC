@@ -19,12 +19,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # 指定工程名称和语言类型
 project(pwf_fw C CXX ASM) 
 
-# 选择构建类型
-set(CMAKE_BUILD_TYPE Debug) # Debug Release RelWithDebInfo MinSizeRel
+# 选择构建类型, 未指定时默认 Debug, 命令行 -DCMAKE_BUILD_TYPE=xxx 可覆盖
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug) # Debug Release RelWithDebInfo MinSizeRel
+endif()
 
 # board specific settings, arch/fpu/instruction
 set(MCU_FLAGS -mcpu=cortex-m4 -mthumb -mthumb-interwork -mfloat-abi=hard -mfpu=fpv4-sp-d16)
-set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/ToolChain/STM32F407IGHX_FLASH.ld") # 指定链接脚本
+set(LINKER_SCRIPT "${CMAKE_SOURCE_DIR}/Toolchain/STM32F407IGHx_FLASH.ld") # 指定链接脚本
 set(CMSISCORE "${CMAKE_SOURCE_DIR}/Drivers/CMSIS")
 set(DSP_NAME "libCMSISDSP.a") # 指定DSP库名称
 
@@ -42,7 +44,9 @@ add_compile_options(-pipe ${MCU_FLAGS} -Wall -Werror -fmessage-length=0 # basic 
                     )
 add_link_options(-pipe ${MCU_FLAGS} -T${LINKER_SCRIPT} -Wl,--no-warn-rwx-segments # close RWX warning
                  -lc -lstdc++ -lm -lnosys # lib options
-                 -Wl,--gc-sections -flto -specs=nano.specs -specs=nosys.specs # optimize options
+                 -Wl,--gc-sections -specs=nano.specs -specs=nosys.specs # optimize options
+                 # 注: 如需 LTO 请同时给编译与链接加 -flto (或用 CMAKE_INTERPROCEDURAL_OPTIMIZATION),
+                 #     仅链接期 -flto 不生效, 故已移除
                  -Wl,-Map=${PROJECT_BINARY_DIR}/${PROJECT_NAME}.map -Wl,--cref -Wl,--print-memory-usage # map options
                  ) # if your executable is too large , try option '-s' to strip symbols
 
@@ -59,7 +63,7 @@ add_definitions(
     ) # need -D<macro> to define macro
 
 # add inc
-include(${CMAKE_SOURCE_DIR}/ToolChain/find_header.cmake)
+include(${CMAKE_SOURCE_DIR}/Toolchain/find_header.cmake)
 include_sub_directories_recursively(${CMAKE_SOURCE_DIR}/ExtLibs/MatrixRobotics)
 include_directories(${CMAKE_SOURCE_DIR}/ExtLibs/DSP/Include)
 include_sub_directories_recursively(${CMAKE_SOURCE_DIR}/Core)
@@ -74,7 +78,6 @@ file(GLOB_RECURSE SOURCES
     "Middlewares/*.c"
     "Core/*.cpp"
     "Core/*.cc"
-    "Core/*.hpp"
     "ExtLibs/MatrixRobotics/*.cpp"
 )
 
@@ -86,12 +89,14 @@ set(ASM_SOURCES
 set_source_files_properties(${ASM_SOURCES} PROPERTIES COMPILE_FLAGS "-x assembler-with-cpp")
 
 # Build types
+# 注: 控制/姿态解算依赖 IEEE 浮点语义 (NaN 检查、有限性判断),
+#     禁止使用 -Ofast / -ffast-math
 if ("${CMAKE_BUILD_TYPE}" STREQUAL "Release")
     message(STATUS "Maximum optimization for speed")
-    add_compile_options(-Ofast)
+    add_compile_options(-O3)
 elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
     message(STATUS "Maximum optimization for speed, debug info included")
-    add_compile_options(-Ofast -g)
+    add_compile_options(-O3 -g)
 elseif ("${CMAKE_BUILD_TYPE}" STREQUAL "MinSizeRel")
     message(STATUS "Maximum optimization for size")
     add_compile_options(-Os)
