@@ -43,3 +43,7 @@ rmec_add_test(test_dt7_protocol
     ${RMEC_CORE}/module/remote/protocol/dt7_protocol.cpp
 )
 rmec_add_test(test_mit_codec unit/test_mit_codec.cpp)
+rmec_add_test(test_power_limiter
+    unit/test_power_limiter.cpp
+    ${RMEC_CORE}/module/motor/power_limiter.cpp
+)
