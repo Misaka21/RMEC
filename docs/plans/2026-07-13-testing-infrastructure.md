@@ -19,7 +19,7 @@
 
 ## 偏离设计说明（评审时确认）
 
-1. **Phase 边界比设计第 6.1 节保守**：`test_loop_queue`、`test_pid`、`test_float2str`、`test_dwt_math` 的断言目标是 P0 分支（`worktree-fix+audit-p0`）引入的修复行为，P0 未合入 main 前无稳定基线，全部移入 Phase B。本计划只含 P0 未触碰模块：CRC、DT7、mit_codec、power_limiter。
+1. **Phase 边界比设计第 6.1 节保守**：`test_loop_queue`、`test_pid`、`test_float2str`、`test_dwt_math` 的断言目标是 P0 分支（`worktree-fix+audit-p0`）引入的修复行为，P0 未合入 main 前无稳定基线，全部移入 Phase B。`test_referee_parser` 因 `referee.hpp` 依赖 `sal_usart.h`（需要 Phase B 的 fake_hal/fake_sal）同样移入 Phase B。本计划只含 P0 未触碰且无 HAL 依赖的模块：CRC、DT7、mit_codec、power_limiter。
 2. **CI 仅先启用 host-test job**：设计第 7 节的 `build-firmware` 依赖 P0 的 CMake 大小写修复（当前 main 在 Linux 上无法配置），`clang-tidy` 依赖交叉编译产出的 compile_commands.json，`size-check` 依赖 build-firmware 产物。三者与三板型矩阵、板型宏守卫一并放入 Phase B 计划。
 
 ---
@@ -715,4 +715,4 @@ GitHub → Settings → Branches → main 保护规则 → Require status checks
 - [ ] 6 个 Task 全部提交，`git log` 呈现 6 个独立提交
 - [ ] `git diff main -- Core/ CMakeLists.txt` 为空（目标代码零改动）
 - [ ] CI 在 PR #1 上显示 `host-test` 绿
-- [ ] 设计文档验收标准 1 满足（干净环境一次通过）；标准 2/3/4 其余部分由 Phase B 计划覆盖
+- [ ] 设计文档验收标准 1 满足（干净环境一次通过）；标准 2/3/4/5 其余部分由 Phase B 计划覆盖
