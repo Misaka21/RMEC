@@ -38,3 +38,7 @@ endfunction()
 
 rmec_add_test(test_sanity unit/test_sanity.cpp)
 rmec_add_test(test_crc unit/test_crc.cpp)
+rmec_add_test(test_dt7_protocol
+    unit/test_dt7_protocol.cpp
+    ${RMEC_CORE}/module/remote/protocol/dt7_protocol.cpp
+)
