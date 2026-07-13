@@ -86,6 +86,8 @@ public:
 
     void popout()
     {
+        if (size_ == 0) // 空队列弹出会使size_下溢到65535, 必须防护
+            return;
         front_ = (front_ + 1) % max_size_;
         --size_;
     }

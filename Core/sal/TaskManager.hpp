@@ -54,6 +54,11 @@ private:
         if (self->init_func_)
             self->init_func_();
 
+        // 绝对时间基准: osDelay是"执行完再延时", 实际周期=period+执行耗时且相位漂移,
+        // vTaskDelayUntil按绝对唤醒点调度才能保住标称频率
+        TickType_t last_wake = xTaskGetTickCount();
+        const TickType_t period_ticks = pdMS_TO_TICKS(self->period_ms_);
+
         for (;;)
         {
             // 测量任务周期
@@ -68,7 +73,7 @@ private:
             if (self->dbg_info.ex_time > self->dbg_info.ex_time_mx)
                 self->dbg_info.ex_time_mx = self->dbg_info.ex_time;
 
-            osDelay(self->period_ms_);
+            vTaskDelayUntil(&last_wake, period_ticks);
         }
     }
 

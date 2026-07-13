@@ -108,18 +108,25 @@ namespace sal
         filter_cfg.FilterScale = CAN_FILTERSCALE_16BIT;                             // 使用16位id模式,这里只用到了低16位(FilterIdHigh没有用到)
         filter_cfg.FilterFIFOAssignment = rx_id_ & 1 ? CAN_RX_FIFO0 : CAN_RX_FIFO1; // 奇数id的模块会被分配到FIFO0,偶数id的模块会被分配到FIFO1
         filter_cfg.FilterIdLow = rx_id_ << 5;                                       // 过滤器寄存器的低16位,因为使用STDID,所以只有最低11位有效,高5位要填0
+        // 16位IDLIST模式下四个寄存器是4个独立的ID槽位, 未用槽位必须显式填充,
+        // 否则栈上垃圾值会额外放行3个随机ID; 统一填充为rx_id (重复匹配无副作用)
+        filter_cfg.FilterIdHigh = rx_id_ << 5;
+        filter_cfg.FilterMaskIdLow = rx_id_ << 5;
+        filter_cfg.FilterMaskIdHigh = rx_id_ << 5;
         filter_cfg.FilterActivation = CAN_FILTER_ENABLE;                            // 启用过滤器
         filter_cfg.SlaveStartFilterBank = 14;                                       // 从第14个过滤器开始配置从机过滤器(在STM32的BxCAN控制器中CAN2是CAN1的从机)
 
-        filter_cfg.FilterBank = // 有can2的时候,can1和can2的过滤器分开配置
-#ifndef CAN2
-            can1_filter_idx_++;
+        // 有can2的时候,can1和can2的过滤器分开配置; 单CAN芯片全部bank归CAN1
+#ifdef CAN2
+        filter_cfg.FilterBank = handle_->Instance == CAN1 ? (can1_filter_idx_++) : (can2_filter_idx_++);
+#else
+        filter_cfg.FilterBank = can1_filter_idx_++;
 #endif
-        handle_->Instance == CAN1 ? (can1_filter_idx_++) : (can2_filter_idx_++); // 根据can_handle判断是CAN1还是CAN2,然后自增
 
-        if (can1_filter_idx_ > 13)
+        // 自增后的idx等于已消耗的bank数: CAN1可用bank 0-13共14个, CAN2可用bank 14-27共14个
+        if (can1_filter_idx_ > 14)
             DEBUG_DEADLOCK("[sal::CanInstance] too many instances in CAN1");
-        if (can2_filter_idx_ > 27)
+        if (can2_filter_idx_ > 28)
             DEBUG_DEADLOCK("[sal::CanInstance] too many instances in CAN2");
 
         HAL_CAN_ConfigFilter(handle_, &filter_cfg);
@@ -166,7 +173,9 @@ namespace sal
         uint8_t rx_tmp[8] = {0};
         CAN_RxHeaderTypeDef rx_header_tmp;
         HAL_CAN_GetRxMessage(hcan, fifo, &rx_header_tmp, rx_tmp);
-        uint8_t len = rx_header_tmp.DLC; // 减少访存次数
+        // 经典CAN的DLC字段在总线上可为9~15(语义仍是8字节), HAL原样返回,
+        // 不钳制会导致memcpy越界读写
+        uint8_t len = rx_header_tmp.DLC > 8 ? 8 : rx_header_tmp.DLC;
 
         uint8_t can_dev = hcan->Instance == CAN1 ? 0 : 1; // 用于区分CAN1和CAN2
         for (auto &instance : instance_[can_dev])
