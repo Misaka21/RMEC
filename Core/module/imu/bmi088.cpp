@@ -283,6 +283,11 @@ bool Bmi088::Acquire(Bmi088Data& out) {
 void Bmi088::HeaterCtrl(float dt) {
     if (heat_pwm_ == nullptr)
         return;
+    if (!ready_) {
+        // 传感器不可用时温度反馈恒为 0, 加热 PID 会无反馈满输出
+        heat_pwm_->SetCompare(0);
+        return;
+    }
     float out = heat_pid_.Calculate(data_.temperature, heat_target_temp_, dt);
     uint32_t pwm = static_cast<uint32_t>(math::Clamp(out, 0.0f, static_cast<float>(UINT16_MAX)));
     heat_pwm_->SetCompare(pwm);

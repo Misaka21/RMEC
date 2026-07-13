@@ -6,6 +6,7 @@
 #include "vision_task.hpp"
 #include "remote_task.hpp"
 #include "referee_task.hpp"
+#include "ins_task.hpp"
 
 // ======================== 灵敏度常量 ========================
 
@@ -78,7 +79,10 @@ static void RobotTick() {
             break;
         case remote::SwitchPos::MID:
         case remote::SwitchPos::UP:
-            mode         = GimbalMode::GYRO_MODE;
+            // IMU 初始化失败时禁止云台上力: 冻结的姿态反馈会让 PID 误差
+            // 无界增长, 云台全力矩撞限位
+            mode         = InsIsReady() ? GimbalMode::GYRO_MODE
+                                        : GimbalMode::ZERO_FORCE;
             chassis_mode = ChassisMode::NO_FOLLOW;
             break;
         default:
@@ -154,14 +158,15 @@ static void RobotTick() {
         else
             scmd.load_mode = LoaderMode::STOP;
     }
-    // 剩余热量: 裁判在线用真实值, 离线视为不限制 (台架调试无裁判系统)
+    // 剩余热量: 裁判在线用真实值; 从未上线视为台架调试不限制;
+    // 比赛中链路闪断则锁存最后一次真实值, 避免掉线瞬间绕过热量保护
+    static uint8_t rest_heat_latch = 255;
     if (RefereeIsOnline()) {
         int32_t rest = static_cast<int32_t>(ref.robot_status.shooter_barrel_heat_limit)
                      - static_cast<int32_t>(ref.power_heat.shooter_17mm_barrel_heat);
-        scmd.rest_heat = static_cast<uint8_t>(math::Clamp(static_cast<float>(rest), 0.0f, 255.0f));
-    } else {
-        scmd.rest_heat = 255;
+        rest_heat_latch = static_cast<uint8_t>(math::Clamp(static_cast<float>(rest), 0.0f, 255.0f));
     }
+    scmd.rest_heat = rest_heat_latch;
     shoot_cmd_topic.Publish(scmd);
 }
 

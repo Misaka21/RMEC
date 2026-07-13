@@ -47,6 +47,7 @@ TEST(PidController, NegativeOrTinyDtAlsoGuarded) {
     cfg.kd = 5.0f;
     PidController pid(cfg);
     EXPECT_TRUE(std::isfinite(pid.Calculate(0.0f, 10.0f, 1e-9f)));
+    EXPECT_TRUE(std::isfinite(pid.Calculate(0.0f, 10.0f, -0.001f)));
 }
 
 }  // namespace

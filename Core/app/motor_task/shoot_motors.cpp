@@ -107,9 +107,11 @@ void ShootMotors::Tick(float dt) {
         break;
     }
 
-    // 热量保护: 剩余热量为 0 则停转
+    // 热量保护: 剩余热量为 0 则停转, 并丢弃滞留的角度目标,
+    // 防止热量恢复后把锁定期间排队的那发补射出去
     if (cmd_cache_.rest_heat == 0 && cmd_cache_.load_mode != LoaderMode::REVERSE) {
         loader_->Disable();
+        loader_angle_target_ = loader_->Measure().total_angle;
     }
 
     last_load_mode_ = cmd_cache_.load_mode;
