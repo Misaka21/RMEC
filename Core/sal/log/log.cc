@@ -58,8 +58,9 @@ void Float2Str(char *str, float va)
     int point = (int)((va - head) * 1000);
     head = abs(head);
     point = abs(point);
+    // 小数部分必须零填充到3位, 否则1.05会被格式化成"1.50"
     if (flag)
-        sprintf(str, "-%d.%d", head, point);
+        sprintf(str, "-%d.%03d", head, point);
     else
-        sprintf(str, "%d.%d", head, point);
+        sprintf(str, "%d.%03d", head, point);
 }

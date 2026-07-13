@@ -90,12 +90,13 @@ void ShootMotors::Tick(float dt) {
     case LoaderMode::SINGLE:
     case LoaderMode::TRIPLE: {
         loader_->Enable();
-        float bullets = (cmd_cache_.load_mode == LoaderMode::SINGLE) ? 1.0f : 3.0f;
-        // 首次进入: 设定角度目标 (当前位置 + N 发弹丸角度)
-        float target = loader_->Measure().total_angle
-                     + bullets * ONE_BULLET_DELTA_ANGLE * REDUCTION_RATIO_LOADER;
-        if (loader_angle_target_ < target)
-            loader_angle_target_ = target;
+        // 仅在进入本模式的边沿设定一次角度目标 (当前位置 + N 发弹丸角度);
+        // 每周期重设会随电机转动持续推高目标, 单发变无限连转
+        if (cmd_cache_.load_mode != last_load_mode_) {
+            float bullets = (cmd_cache_.load_mode == LoaderMode::SINGLE) ? 1.0f : 3.0f;
+            loader_angle_target_ = loader_->Measure().total_angle
+                                 + bullets * ONE_BULLET_DELTA_ANGLE * REDUCTION_RATIO_LOADER;
+        }
         loader_->SetTarget(loop_mode::ANGLE_SPEED, loader_angle_target_);
         break;
     }
@@ -106,10 +107,14 @@ void ShootMotors::Tick(float dt) {
         break;
     }
 
-    // 热量保护: 剩余热量为 0 则停转
+    // 热量保护: 剩余热量为 0 则停转, 并丢弃滞留的角度目标,
+    // 防止热量恢复后把锁定期间排队的那发补射出去
     if (cmd_cache_.rest_heat == 0 && cmd_cache_.load_mode != LoaderMode::REVERSE) {
         loader_->Disable();
+        loader_angle_target_ = loader_->Measure().total_angle;
     }
+
+    last_load_mode_ = cmd_cache_.load_mode;
 
     loader_->Update(dt);
 }

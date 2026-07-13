@@ -6,6 +6,7 @@
 #include "robot_topics.hpp"
 #include "TaskManager.hpp"
 #include "sal_dwt.h"
+#include "log.h"
 
 #if defined(ONE_BOARD) || defined(GIMBAL_BOARD)
 
@@ -14,6 +15,7 @@ static Ins* ins = nullptr;
 static DwtInstance dwt;
 static DwtInstance heat_dwt;
 static uint32_t count = 0;
+static bool ins_ready = false;
 
 void InsTaskStart() {
     static TaskManager ins_task({
@@ -53,6 +55,13 @@ void InsTaskStart() {
 
             imu = new Bmi088(bmi_cfg);   // PRE_CALIBRATED: 跳过在线校准
 
+            // 初始化失败则降级: 不建姿态解算管线, InsIsReady() 保持 false,
+            // robot_task 据此禁止 GYRO_MODE, 避免冻结反馈导致云台失控
+            if (!imu->IsReady()) {
+                LOGERROR("[ins_task] BMI088 init failed, INS disabled");
+                return;
+            }
+
             // 2. 读 100 样本计算初始四元数
             float acc_sum[3] = {};
             Bmi088Data d;
@@ -75,9 +84,14 @@ void InsTaskStart() {
             // 4. 预热 DWT 计时器
             dwt.DwtGetDeltaT();
             heat_dwt.DwtGetDeltaT();
+
+            ins_ready = true;
         },
 
         .task_func = []() {
+            if (!ins_ready)
+                return;
+
             // 1 kHz: 读→算→发→控
             float dt = dwt.DwtGetDeltaT();
             Bmi088Data bmi_data;
@@ -92,8 +106,11 @@ void InsTaskStart() {
     });
 }
 
+bool InsIsReady() { return ins_ready; }
+
 #else // CHASSIS_BOARD — 不运行 IMU 任务
 
 void InsTaskStart() {}
+bool InsIsReady() { return false; }
 
 #endif

@@ -26,4 +26,5 @@ private:
     ShootCmdData cmd_cache_{};
 
     float loader_angle_target_ = 0;  // 单发/三连角度目标
+    LoaderMode last_load_mode_ = LoaderMode::STOP;  // 上周期模式, 用于边沿检测
 };

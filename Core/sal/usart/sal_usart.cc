@@ -29,6 +29,7 @@ namespace sal
         tx_use_fifo_ = config.use_fifo;
         tx_queue_mx_size_ = tx_use_fifo_ ? config.queue_mx_size : 1; // 非fifo模式下,队列长度设置为一1方便代码复用
         tx_queue_.resize(tx_queue_mx_size_);                         // 初始化发送队列
+        tx_len_queue_.resize(tx_queue_mx_size_);                     // 长度队列与数据队列容量一致, 否则PopSend取到的长度恒为0
         tx_type_ = config.tx_type;
         tx_cbk_ = config.tx_cbk;
 

@@ -98,7 +98,10 @@ DjiDriver::DjiDriver(const DjiDriverConfig& cfg)
     can_cfg.tx_id = GROUP_STD_IDS[group_idx_];
     can_cfg.rx_id = rx_id;
     can_cfg.rx_cbk = [this](uint8_t /*len*/) {
-        DecodeFeedback(can_->RxData());
+        // can_ 在 new 返回后才赋值, 而回调在 CanInstance 构造期间即已注册:
+        // 总线上已有反馈帧时 ISR 可能在窗口期命中 nullptr
+        if (can_ != nullptr)
+            DecodeFeedback(can_->RxData());
     };
 
     can_ = new sal::CanInstance(can_cfg);
@@ -129,6 +132,9 @@ void DjiDriver::FlushAll() {
         sal::CanMsg msg{};
         std::memcpy(msg.data, group.data, 8);
         group.sender->CanTransmit(msg);
+        // 发送后清零: 若计算 SetOutput 的任务挂死而发送任务仍在跑,
+        // 下一周期发出的是零力矩而不是永久重发最后一帧电流指令 (飞车保护, 与 LK 驱动一致)
+        std::memset(group.data, 0, 8);
     }
 }
 

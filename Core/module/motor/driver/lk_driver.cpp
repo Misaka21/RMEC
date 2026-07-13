@@ -31,7 +31,9 @@ LkDriver::LkDriver(const LkDriverConfig& cfg) {
     can_cfg.tx_id = 0x280;
     can_cfg.rx_id = rx_id;
     can_cfg.rx_cbk = [this](uint8_t /*len*/) {
-        DecodeFeedback(can_->RxData());
+        // can_ 在 new 返回后才赋值, 回调在构造期间即已注册, 防窗口期空指针
+        if (can_ != nullptr)
+            DecodeFeedback(can_->RxData());
     };
 
     can_ = new sal::CanInstance(can_cfg);

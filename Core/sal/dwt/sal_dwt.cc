@@ -36,7 +36,8 @@ void DwtInstance::DwtSysTimeUpdate(void)
 
     DwtCntUpdate();
 
-    CYCCNT64 = (uint64_t)cyc_round_cnt_ * (uint64_t)UINT32_MAX + (uint64_t)cnt_now;
+    // 每轮溢出的跨度是2^32而非UINT32_MAX(2^32-1), 用乘法会每溢出一次累计少1个cycle
+    CYCCNT64 = ((uint64_t)cyc_round_cnt_ << 32) + (uint64_t)cnt_now;
     CNT_TEMP1 = CYCCNT64 / CPU_FREQ_Hz;
     CNT_TEMP2 = CYCCNT64 - CNT_TEMP1 * CPU_FREQ_Hz;
     dwt_time_.s = CNT_TEMP1;

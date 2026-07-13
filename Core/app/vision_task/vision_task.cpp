@@ -12,7 +12,7 @@ static vision::VisionComm* vis = nullptr;
 static daemon::DaemonInstance* vis_daemon = nullptr;
 static TopicReader<InsData>* ins_reader = nullptr;
 
-// 发送参数 (由 cmd_task 写, vision_task 读, 单字节/float 原子性足够)
+// 发送参数 (由 robot_task 写, vision_task 读, 单字节/float 原子性足够)
 static vision::VisionTxData tx_state{};
 
 void VisionTaskStart() {
@@ -61,7 +61,7 @@ void VisionTaskStart() {
 
 void VisionSetMode(vision::AimMode mode, vision::EnemyColor color,
                    float bullet_speed) {
-    tx_state.aim_mode     = vision::AimMode::AUTO_AIM;
+    tx_state.aim_mode     = mode;
     tx_state.enemy_color  = color;
     tx_state.bullet_speed = bullet_speed;
 }

@@ -78,7 +78,11 @@ public:
     const DmFeedback& DmMeasure() const { return dm_fb_; }
 
     /// 离线检测：每次控制循环调用
-    void TickOffline() { online_cnt_++; }
+    // 饱和计数: uint16_t 回绕到 0 会让离线电机被周期性误判在线
+    void TickOffline() {
+        if (online_cnt_ < OFFLINE_THRESHOLD)
+            online_cnt_++;
+    }
 
     /// 是否在线
     bool IsOnline() const { return online_cnt_ < OFFLINE_THRESHOLD; }

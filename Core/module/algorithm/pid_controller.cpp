@@ -48,6 +48,10 @@ void PidController::ErrorHandle() noexcept {
 }
 
 float PidController::Calculate(float measure, float ref, float dt) noexcept {
+    // dt 保护: 首次调用/定时抖动可能传入 0, 微分项除零会产生 NaN/Inf 直通电机输出
+    if (dt < 1e-6f)
+        return output_;
+
     // 堵转检测
     if (improve_flags_ & pid::ERROR_HANDLE)
         ErrorHandle();

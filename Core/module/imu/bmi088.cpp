@@ -2,6 +2,7 @@
 #include "bmi088_reg.hpp"
 #include "math.hpp"
 #include "sal_dwt.h"
+#include "log.h"
 
 #include <cmath>
 #include <cstring>
@@ -192,13 +193,20 @@ Bmi088::Bmi088(const Bmi088Config& cfg)
     }
     heat_pid_.Init(cfg.heat_pid_config);
 
-    // 3. 重试初始化直到成功
-    uint8_t error;
-    do {
+    // 3. 有限次重试初始化: 传感器损坏/未接时不能死等, 标记不可用后降级返回,
+    //    由上层通过 IsReady() 判断 (原实现 do-while 无限重试会卡死整机启动)
+    constexpr uint8_t MAX_INIT_RETRY = 10;
+    uint8_t error = 1;
+    for (uint8_t retry = 0; retry < MAX_INIT_RETRY && error != 0; ++retry) {
         error = 0;
         error |= InitAccel();
         error |= InitGyro();
-    } while (error != 0);
+    }
+    if (error != 0) {
+        LOGERROR("[Bmi088] init failed after %d retries, sensor unavailable", MAX_INIT_RETRY);
+        return; // ready_ 保持 false
+    }
+    ready_ = true; // 必须在 Calibrate() 之前置位: 校准内部依赖 Acquire() 读取原始数据
 
     // 4. 临时切换阻塞模式执行校准
     auto saved_mode = work_mode_;
@@ -220,13 +228,14 @@ Bmi088::Bmi088(const Bmi088Config& cfg)
         gyro_int_cfg.exti_cbk = [this]() { OnGyroDataReady(); };
         gyro_int_ = new sal::GpioInstance(gyro_int_cfg);
     }
-
-    ready_ = true;
 }
 
 // ========================= Acquire =========================
 
 bool Bmi088::Acquire(Bmi088Data& out) {
+    if (!ready_) // 初始化失败的传感器不可读, 防止上层拿到全零/垃圾数据当真值
+        return false;
+
     if (work_mode_ == Bmi088WorkMode::BLOCK_PERIODIC) {
         // 阻塞读取
         uint8_t buf[6] = {};
@@ -274,6 +283,11 @@ bool Bmi088::Acquire(Bmi088Data& out) {
 void Bmi088::HeaterCtrl(float dt) {
     if (heat_pwm_ == nullptr)
         return;
+    if (!ready_) {
+        // 传感器不可用时温度反馈恒为 0, 加热 PID 会无反馈满输出
+        heat_pwm_->SetCompare(0);
+        return;
+    }
     float out = heat_pid_.Calculate(data_.temperature, heat_target_temp_, dt);
     uint32_t pwm = static_cast<uint32_t>(math::Clamp(out, 0.0f, static_cast<float>(UINT16_MAX)));
     heat_pwm_->SetCompare(pwm);
