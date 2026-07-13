@@ -5,6 +5,10 @@ on:
     branches: ["**"]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   host-test:
     runs-on: ubuntu-latest
@@ -16,6 +20,7 @@ jobs:
         with:
           path: build-tests/_deps
           key: gtest-${{ hashFiles('tests/CMakeLists.txt') }}
+          restore-keys: gtest-
 
       - name: Configure
         run: cmake -B build-tests -S tests
@@ -25,3 +30,20 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build-tests --output-on-failure
+
+  build-firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ARM Toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi ninja-build
+
+      - name: Configure
+        run: cmake -B build -G Ninja
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Size Report
+        run: arm-none-eabi-size build/pwf_fw.elf | tee -a "$GITHUB_STEP_SUMMARY"
