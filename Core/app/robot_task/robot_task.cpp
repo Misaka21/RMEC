@@ -4,12 +4,20 @@
 #include "robot_topics.hpp"
 #include "math.hpp"
 #include "vision_task.hpp"
+#include "remote_task.hpp"
+#include "referee_task.hpp"
 
 // ======================== 灵敏度常量 ========================
 
 // 摇杆满杆对应的角速度 (deg/s)
 static constexpr float YAW_SENSITIVITY   = 800.0f;
 static constexpr float PITCH_SENSITIVITY = 1000.0f;
+
+// 摇杆满杆对应的底盘轮速 (电机转子 deg/s) // TODO: 实测标定
+static constexpr float CHASSIS_SPEED_SENSITIVITY = 20000.0f;
+
+// 拨轮触发阈值 (满量程 660 的一半)
+static constexpr int16_t DIAL_THRESHOLD = 330;
 
 // 遥控器通道满杆值
 static constexpr float CH_FULL_SCALE = 660.0f;
@@ -23,6 +31,7 @@ static constexpr float    ROBOT_DT        = static_cast<float>(ROBOT_PERIOD_MS) 
 static TopicReader<remote::Dt7Data>*       rc_reader          = nullptr;
 static TopicReader<vision::VisionRxData>*  vision_reader      = nullptr;
 static TopicReader<GimbalFeedData>*        gimbal_feed_reader = nullptr;
+static TopicReader<referee::RefereeData>*  referee_reader     = nullptr;
 
 static float yaw_target   = 0;
 static float pitch_target = 0;
@@ -34,34 +43,47 @@ static void RobotInit() {
     rc_reader          = remote_topic.Subscribe();
     vision_reader      = vision_topic.Subscribe();
     gimbal_feed_reader = gimbal_feed_topic.Subscribe();
+    referee_reader     = referee_topic.Subscribe();
 }
 
 static void RobotTick() {
-    // 读取遥控器数据
-    remote::Dt7Data rc{};
+    // 读取遥控器数据: 无新数据时保持上次有效帧 (任务 200Hz > 遥控 ~70Hz,
+    // 若用局部零值会导致模式每周期抖回 ZERO_FORCE)
+    static remote::Dt7Data rc{};
     rc_reader->Read(rc);
 
-    // 读取视觉数据
-    vision::VisionRxData vision{};
+    // 读取视觉数据 (同理保持上次值)
+    static vision::VisionRxData vision{};
     vision_reader->Read(vision);
 
     // 读取云台反馈
-    GimbalFeedData feed{};
+    static GimbalFeedData feed{};
     gimbal_feed_reader->Read(feed);
 
-    // 模式判断
-    GimbalMode mode = GimbalMode::ZERO_FORCE;
+    // 读取裁判系统数据 (无发布者的板型上保持默认值)
+    static referee::RefereeData ref{};
+    referee_reader->Read(ref);
 
-    switch (rc.sw_r) {
-    case remote::SwitchPos::DOWN:
-        mode = GimbalMode::ZERO_FORCE;
-        break;
-    case remote::SwitchPos::MID:
-        mode = GimbalMode::GYRO_MODE;
-        break;
-    case remote::SwitchPos::UP:
-        mode = GimbalMode::GYRO_MODE;
-        break;
+    // ---- 模式判断 ----
+    // 遥控器离线时无条件 ZERO_FORCE; 非法拨杆值 (如 0) 落入 default 同样 ZERO_FORCE
+    GimbalMode  mode         = GimbalMode::ZERO_FORCE;
+    ChassisMode chassis_mode = ChassisMode::ZERO_FORCE;
+    const bool  rc_online    = RemoteIsOnline();
+
+    if (rc_online) {
+        switch (rc.sw_r) {
+        case remote::SwitchPos::DOWN:
+            mode         = GimbalMode::ZERO_FORCE;
+            chassis_mode = ChassisMode::ZERO_FORCE;
+            break;
+        case remote::SwitchPos::MID:
+        case remote::SwitchPos::UP:
+            mode         = GimbalMode::GYRO_MODE;
+            chassis_mode = ChassisMode::NO_FOLLOW;
+            break;
+        default:
+            break;
+        }
     }
 
     // 模式切换同步: ZERO_FORCE → GYRO_MODE 时从反馈同步目标角度
@@ -94,17 +116,53 @@ static void RobotTick() {
     last_mode = mode;
 
     // 根据右拨杆实时更新视觉自瞄模式
-    vision::AimMode aim = (rc.sw_r == remote::SwitchPos::UP)
+    vision::AimMode aim = (rc_online && rc.sw_r == remote::SwitchPos::UP)
                           ? vision::AimMode::AUTO_AIM
                           : vision::AimMode::OFF;
     VisionSetMode(aim, vision::EnemyColor::UNKNOWN, 15.0f);
 
-    // 发布云台命令
+    // ---- 发布云台命令 ----
     GimbalCmdData cmd{};
     cmd.yaw   = yaw_target;
     cmd.pitch = pitch_target;
     cmd.mode  = mode;
     gimbal_cmd_topic.Publish(cmd);
+
+    // ---- 发布底盘命令 ----
+    ChassisCmdData ccmd{};
+    ccmd.mode = chassis_mode;
+    if (chassis_mode != ChassisMode::ZERO_FORCE) {
+        ccmd.vx = static_cast<float>(rc.ch_l_y) / CH_FULL_SCALE * CHASSIS_SPEED_SENSITIVITY;
+        ccmd.vy = static_cast<float>(rc.ch_l_x) / CH_FULL_SCALE * CHASSIS_SPEED_SENSITIVITY;
+        ccmd.wz = 0;  // 旋转通道暂未分配
+    }
+    if (RefereeIsOnline()) {
+        ccmd.power_limit   = static_cast<float>(ref.robot_status.chassis_power_limit);
+        ccmd.buffer_energy = static_cast<float>(ref.power_heat.buffer_energy);
+    }
+    chassis_cmd_topic.Publish(ccmd);
+
+    // ---- 发布发射命令 ----
+    ShootCmdData scmd{};
+    if (rc_online && rc.sw_l == remote::SwitchPos::UP) {
+        scmd.friction_mode = FrictionMode::ON;
+        // 拨轮下压连发, 上抬退弹 (方向若与实车相反, 调换两处阈值符号)
+        if (rc.dial < -DIAL_THRESHOLD)
+            scmd.load_mode = LoaderMode::BURST;
+        else if (rc.dial > DIAL_THRESHOLD)
+            scmd.load_mode = LoaderMode::REVERSE;
+        else
+            scmd.load_mode = LoaderMode::STOP;
+    }
+    // 剩余热量: 裁判在线用真实值, 离线视为不限制 (台架调试无裁判系统)
+    if (RefereeIsOnline()) {
+        int32_t rest = static_cast<int32_t>(ref.robot_status.shooter_barrel_heat_limit)
+                     - static_cast<int32_t>(ref.power_heat.shooter_17mm_barrel_heat);
+        scmd.rest_heat = static_cast<uint8_t>(math::Clamp(static_cast<float>(rest), 0.0f, 255.0f));
+    } else {
+        scmd.rest_heat = 255;
+    }
+    shoot_cmd_topic.Publish(scmd);
 }
 
 void RobotTaskStart() {
