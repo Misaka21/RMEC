@@ -42,3 +42,4 @@ rmec_add_test(test_dt7_protocol
     unit/test_dt7_protocol.cpp
     ${RMEC_CORE}/module/remote/protocol/dt7_protocol.cpp
 )
+rmec_add_test(test_mit_codec unit/test_mit_codec.cpp)
