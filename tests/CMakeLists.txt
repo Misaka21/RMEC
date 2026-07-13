@@ -37,3 +37,4 @@ function(rmec_add_test name)
 endfunction()
 
 rmec_add_test(test_sanity unit/test_sanity.cpp)
+rmec_add_test(test_crc unit/test_crc.cpp)
