@@ -31,6 +31,7 @@ function(rmec_add_test name)
         ${RMEC_CORE}/module/motor
         ${RMEC_CORE}/module/motor/driver
         ${RMEC_CORE}/module/algorithm
+        ${RMEC_CORE}/sal
     )
     target_compile_options(${name} PRIVATE -Wall -Wextra -Werror)
     gtest_discover_tests(${name})
@@ -46,4 +47,9 @@ rmec_add_test(test_mit_codec unit/test_mit_codec.cpp)
 rmec_add_test(test_power_limiter
     unit/test_power_limiter.cpp
     ${RMEC_CORE}/module/motor/power_limiter.cpp
+)
+rmec_add_test(test_loop_queue unit/test_loop_queue.cpp)
+rmec_add_test(test_pid
+    unit/test_pid.cpp
+    ${RMEC_CORE}/module/algorithm/pid_controller.cpp
 )
