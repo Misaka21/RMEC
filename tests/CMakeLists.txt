@@ -131,3 +131,18 @@ rmec_add_flow_test(test_shoot_loader
     ${RMEC_CORE}/module/algorithm/pid_controller.cpp
     ${RMEC_CORE}/sal/log/log.cc
 )
+rmec_add_flow_test(test_topic_wiring
+    flow/test_topic_wiring.cpp
+    ${RMEC_CORE}/app/motor_task/motor_task.cpp
+    ${RMEC_CORE}/app/motor_task/chassis_motors.cpp
+    ${RMEC_CORE}/app/motor_task/gimbal_motors.cpp
+    ${RMEC_CORE}/app/motor_task/shoot_motors.cpp
+    ${RMEC_CORE}/module/motor/driver/dji_driver.cpp
+    ${RMEC_CORE}/module/motor/driver/dm_driver.cpp
+    ${RMEC_CORE}/module/motor/driver/ht_driver.cpp
+    ${RMEC_CORE}/module/motor/driver/lk_driver.cpp
+    ${RMEC_CORE}/module/motor/power_limiter.cpp
+    ${RMEC_CORE}/module/algorithm/pid_controller.cpp
+    ${RMEC_CORE}/sal/dwt/sal_dwt.cc
+    ${RMEC_CORE}/sal/log/log.cc
+)
