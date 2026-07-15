@@ -89,3 +89,7 @@ rmec_add_fake_test(test_float2str
     unit/test_float2str.cpp
     ${RMEC_CORE}/sal/log/log.cc
 )
+rmec_add_fake_test(test_dwt_math
+    unit/test_dwt_math.cpp
+    ${RMEC_CORE}/sal/dwt/sal_dwt.cc
+)
