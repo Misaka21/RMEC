@@ -1,10 +1,11 @@
 #pragma once
 
 // ======================== 板型 (三选一) ========================
+// 默认 ONE_BOARD; 构建系统可用 -DCHASSIS_BOARD / -DGIMBAL_BOARD 注入覆盖 (CI 矩阵用)
 
+#if !defined(ONE_BOARD) && !defined(CHASSIS_BOARD) && !defined(GIMBAL_BOARD)
 #define ONE_BOARD
-// #define CHASSIS_BOARD
-// #define GIMBAL_BOARD
+#endif
 
 #if !defined(ONE_BOARD) && !defined(CHASSIS_BOARD) && !defined(GIMBAL_BOARD)
 #error "No board type defined! Define exactly one: ONE_BOARD, CHASSIS_BOARD, or GIMBAL_BOARD."
