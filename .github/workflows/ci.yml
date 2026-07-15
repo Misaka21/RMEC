@@ -33,6 +33,10 @@ jobs:
 
   build-firmware:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board: [ONE_BOARD, CHASSIS_BOARD, GIMBAL_BOARD]
     steps:
       - uses: actions/checkout@v4
 
@@ -40,10 +44,104 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi ninja-build
 
       - name: Configure
-        run: cmake -B build -G Ninja
+        run: >
+          cmake -B build -G Ninja
+          -DCMAKE_C_FLAGS=-D${{ matrix.board }}
+          -DCMAKE_CXX_FLAGS=-D${{ matrix.board }}
 
       - name: Build
-        run: cmake --build build
+        run: set -o pipefail && cmake --build build 2>&1 | tee build.log
 
-      - name: Size Report
-        run: arm-none-eabi-size build/pwf_fw.elf | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.board }}
+          path: |
+            build/pwf_fw.elf
+            build/pwf_fw.hex
+            build/pwf_fw.bin
+            build/pwf_fw.map
+            build.log
+
+  # 解析链接期 --print-memory-usage 输出, 任一 region 超过容量 90% 则失败
+  size-check:
+    runs-on: ubuntu-latest
+    needs: build-firmware
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: firmware-*
+
+      - name: Check memory usage
+        run: |
+          python3 - <<'EOF'
+          import glob, os, re, sys
+
+          THRESHOLD = 90.0
+          rows, failed = [], False
+          logs = sorted(glob.glob('firmware-*/build.log'))
+          if not logs:
+              print('no build.log artifacts found'); sys.exit(1)
+          for log in logs:
+              board = os.path.dirname(log).replace('firmware-', '')
+              text = open(log, encoding='utf-8', errors='replace').read()
+              found = re.findall(
+                  r'^\s*(FLASH|RAM|CCMRAM):\s+(\S+\s\S+)\s+(\S+\s\S+)\s+([\d.]+)%',
+                  text, re.M)
+              if not found:
+                  print(f'{board}: memory usage table missing in build.log'); failed = True
+              for region, used, total, pct in found:
+                  pct = float(pct)
+                  over = pct > THRESHOLD
+                  failed |= over
+                  mark = '❌' if over else '✅'
+                  rows.append(f'| {board} | {region} | {used} | {total} | {pct:.2f}% {mark} |')
+          summary = ['## 固件资源用量 (阈值 90%)', '',
+                     '| 板型 | Region | Used | Total | 用量 |',
+                     '|---|---|---|---|---|'] + rows
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write('\n'.join(summary) + '\n')
+          print('\n'.join(summary))
+          sys.exit(1 if failed else 0)
+          EOF
+
+  # 增量 clang-tidy: 只查本次改动的 Core/ 源文件, 规则集从小起步 (设计第 7 节)
+  clang-tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi ninja-build clang-tidy
+
+      - name: Configure (生成 compile_commands.json)
+        run: cmake -B build -G Ninja
+
+      - name: Collect changed Core files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="origin/main"
+          fi
+          git fetch origin main --quiet || true
+          git diff --name-only --diff-filter=ACMR "$BASE"...HEAD -- 'Core/**/*.cpp' 'Core/**/*.cc' > changed.txt || true
+          echo "count=$(grep -c . changed.txt || true)" >> "$GITHUB_OUTPUT"
+          echo "Changed files:"; cat changed.txt
+
+      - name: Run clang-tidy
+        if: steps.changed.outputs.count != '0'
+        run: |
+          # clang 不认识部分 gcc 专属旗标, 从编译数据库剔除
+          sed -i 's/-mthumb-interwork //g; s/-fmessage-length=0 //g' build/compile_commands.json
+          # 把 arm-none-eabi-g++ 的系统头搜索路径喂给 clang
+          EXTRA_ARGS="--extra-arg=--target=arm-none-eabi --extra-arg=-Wno-unknown-warning-option"
+          for d in $(arm-none-eabi-g++ -xc++ /dev/null -E -Wp,-v 2>&1 | sed -n 's/^ //p'); do
+            EXTRA_ARGS="$EXTRA_ARGS --extra-arg=-isystem --extra-arg=$d"
+          done
+          xargs -a changed.txt clang-tidy -p build \
+            --checks='-*,bugprone-*,concurrency-*,performance-*' \
+            --warnings-as-errors='*' $EXTRA_ARGS
