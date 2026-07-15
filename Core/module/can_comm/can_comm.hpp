@@ -75,7 +75,9 @@ CanComm<TxData, RxData>::CanComm(const CanCommConfig& cfg) {
             can_cfg.rx_cbk = [this, i](uint8_t /*len*/) {
                 // ISR: 帧 0 到达意味着新一轮, 清除未完成的旧数据
                 if (i == 0 && rx_mask_ != 0) {
-                    std::memset(&rx_staging_, 0, sizeof(rx_staging_));
+                    // 值初始化而非 memset: RxData 带默认成员初始化器,
+                    // memset 触发 -Werror=class-memaccess (双板型编译)
+                    rx_staging_ = RxData{};
                     rx_mask_ = 0;
                 }
 
