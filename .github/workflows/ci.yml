@@ -104,3 +104,44 @@ jobs:
           print('\n'.join(summary))
           sys.exit(1 if failed else 0)
           EOF
+
+  # 增量 clang-tidy: 只查本次改动的 Core/ 源文件, 规则集从小起步 (设计第 7 节)
+  clang-tidy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-arm-none-eabi ninja-build clang-tidy
+
+      - name: Configure (生成 compile_commands.json)
+        run: cmake -B build -G Ninja
+
+      - name: Collect changed Core files
+        id: changed
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="origin/main"
+          fi
+          git fetch origin main --quiet || true
+          git diff --name-only --diff-filter=ACMR "$BASE"...HEAD -- 'Core/**/*.cpp' 'Core/**/*.cc' > changed.txt || true
+          echo "count=$(grep -c . changed.txt || true)" >> "$GITHUB_OUTPUT"
+          echo "Changed files:"; cat changed.txt
+
+      - name: Run clang-tidy
+        if: steps.changed.outputs.count != '0'
+        run: |
+          # clang 不认识部分 gcc 专属旗标, 从编译数据库剔除
+          sed -i 's/-mthumb-interwork //g; s/-fmessage-length=0 //g' build/compile_commands.json
+          # 把 arm-none-eabi-g++ 的系统头搜索路径喂给 clang
+          EXTRA_ARGS="--extra-arg=--target=arm-none-eabi --extra-arg=-Wno-unknown-warning-option"
+          for d in $(arm-none-eabi-g++ -xc++ /dev/null -E -Wp,-v 2>&1 | sed -n 's/^ //p'); do
+            EXTRA_ARGS="$EXTRA_ARGS --extra-arg=-isystem --extra-arg=$d"
+          done
+          xargs -a changed.txt clang-tidy -p build \
+            --checks='-*,bugprone-*,concurrency-*,performance-*' \
+            --warnings-as-errors='*' $EXTRA_ARGS
