@@ -58,6 +58,7 @@ function(_rmec_fake_env name)
         ${RMEC_CORE}/sal/dwt
         ${RMEC_CORE}/sal/log
         ${RMEC_CORE}/module/motor/controller
+        ${RMEC_CORE}/module/remote
         ${RMEC_CORE}/module/daemon
         ${RMEC_CORE}/module/imu
         ${RMEC_CORE}/app
@@ -118,6 +119,10 @@ rmec_add_fake_test(test_dwt_math
 rmec_add_fake_test(test_referee_parser
     unit/test_referee_parser.cpp
     ${RMEC_CORE}/module/referee/referee.cpp
+)
+rmec_add_flow_test(test_robot_task_modes
+    flow/test_robot_task_modes.cpp
+    ${RMEC_CORE}/app/robot_task/robot_task.cpp
 )
 rmec_add_flow_test(test_shoot_loader
     flow/test_shoot_loader.cpp
