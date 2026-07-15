@@ -41,6 +41,8 @@ endfunction()
 set(RMEC_FAKE_SUPPORT
     ${CMAKE_CURRENT_SOURCE_DIR}/support/fake_sal/fake_registers.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/support/fake_sal/fake_sal_usart.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/support/fake_sal/fake_sal_can.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/support/fake_sal/fake_task_manager.cc
 )
 
 # 注册一个使用 fake_hal/fake_sal 的测试目标:

@@ -1,4 +1,5 @@
 // 假外设句柄/假寄存器的唯一定义 + 跨 fake 模块的公共测试工具
+#include "can.h"
 #include "main.h"
 #include "usart.h"
 
@@ -11,6 +12,9 @@ FakeCoreDebugType fake_core_debug{};
 UART_HandleTypeDef huart1{1};
 UART_HandleTypeDef huart3{3};
 UART_HandleTypeDef huart6{6};
+
+CAN_HandleTypeDef hcan1{1};
+CAN_HandleTypeDef hcan2{2};
 }
 
 namespace test {
