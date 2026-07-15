@@ -93,3 +93,7 @@ rmec_add_fake_test(test_dwt_math
     unit/test_dwt_math.cpp
     ${RMEC_CORE}/sal/dwt/sal_dwt.cc
 )
+rmec_add_fake_test(test_referee_parser
+    unit/test_referee_parser.cpp
+    ${RMEC_CORE}/module/referee/referee.cpp
+)
