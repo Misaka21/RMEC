@@ -61,6 +61,23 @@ TEST(DwtMath, TimelineUsSurvivesLongUptime) {
     EXPECT_EQ(DwtInstance::DwtGetTimeline_us(), ExpectedUs(total));
 }
 
+TEST(DwtMath, TimelineMsSurvivesVeryLongUptime) {
+    // 回归目标: DwtGetTimeline_ms 的 s * 1000 若按 uint32 计算, 连续运行约
+    // 49.7 天 (s >= 4294968) 后回绕。制造 200000 次溢出 ≈ 59.2 天。
+    ResetDwt();
+    const uint64_t wraps = 200000;
+    for (uint64_t i = 0; i < wraps; ++i) {
+        fake_dwt.CYCCNT = 0x80000000u;
+        DwtInstance::DwtGetTimeline_us();
+        fake_dwt.CYCCNT = 0x00000000u;
+        DwtInstance::DwtGetTimeline_us();
+    }
+    fake_dwt.CYCCNT = 80u;
+    double total_ms = static_cast<double>((wraps << 32) + 80u) / 168000.0;
+    // float 在 5e9 量级的分辨率是 512, 容差放宽到 2048
+    EXPECT_NEAR(DwtInstance::DwtGetTimeline_ms(), total_ms, 2048.0);
+}
+
 TEST(DwtMath, DeltaTSurvivesWrap) {
     ResetDwt();
     // (uint32_t)(now - last) 的模运算在回绕时仍给出正确间隔
