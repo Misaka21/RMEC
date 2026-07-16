@@ -42,7 +42,7 @@ void DwtInstance::DwtSysTimeUpdate(void)
     CNT_TEMP2 = CYCCNT64 - CNT_TEMP1 * CPU_FREQ_Hz;
     dwt_time_.s = CNT_TEMP1;
     dwt_time_.ms = CNT_TEMP2 / CPU_FREQ_Hz_ms;
-    CNT_TEMP3 = CNT_TEMP2 - dwt_time_.ms * CPU_FREQ_Hz_ms;
+    CNT_TEMP3 = CNT_TEMP2 - (uint64_t)dwt_time_.ms * CPU_FREQ_Hz_ms;
     dwt_time_.us = CNT_TEMP3 / CPU_FREQ_Hz_us;
 }
 
@@ -67,7 +67,7 @@ float DwtInstance::DwtGetTimeline_s(void)
 {
     DwtSysTimeUpdate();
 
-    float DWT_Timelinef32 = dwt_time_.s + dwt_time_.ms * 0.001f + dwt_time_.us * 0.000001f;
+    float DWT_Timelinef32 = (float)dwt_time_.s + (float)dwt_time_.ms * 0.001f + (float)dwt_time_.us * 0.000001f;
 
     return DWT_Timelinef32;
 }
@@ -76,7 +76,8 @@ float DwtInstance::DwtGetTimeline_ms(void)
 {
     DwtSysTimeUpdate();
 
-    float DWT_Timelinef32 = dwt_time_.s * 1000 + dwt_time_.ms + dwt_time_.us * 0.001f;
+    // s 先转 float 再乘: uint32 乘法在 s >= 4294968 (约 49.7 天) 时回绕
+    float DWT_Timelinef32 = (float)dwt_time_.s * 1000.0f + (float)dwt_time_.ms + (float)dwt_time_.us * 0.001f;
 
     return DWT_Timelinef32;
 }
@@ -84,7 +85,8 @@ float DwtInstance::DwtGetTimeline_ms(void)
 uint64_t DwtInstance::DwtGetTimeline_us(void)
 {
     DwtSysTimeUpdate();
-    return dwt_time_.s * 1000000 + dwt_time_.ms * 1000 + dwt_time_.us;
+    // s 必须先提升到 64 位再乘: uint32 乘法在 s >= 4295 (约 71.6 分钟) 时回绕
+    return (uint64_t)dwt_time_.s * 1000000 + (uint64_t)dwt_time_.ms * 1000 + dwt_time_.us;
 }
 
 void DwtInstance::DwtDelay(float Delay)
@@ -92,7 +94,7 @@ void DwtInstance::DwtDelay(float Delay)
     uint32_t tickstart = DWT->CYCCNT;
     float wait = Delay;
 
-    while ((DWT->CYCCNT - tickstart) < wait * (float)CPU_FREQ_Hz)
+    while ((float)(DWT->CYCCNT - tickstart) < wait * (float)CPU_FREQ_Hz)
         ;
 }
 
@@ -103,7 +105,7 @@ DwtInstance::DwtInstance() : dwt_cnt_(0)
 float DwtInstance::DwtGetDeltaT()
 {
     volatile uint32_t cnt_now = DWT->CYCCNT;
-    float dt = ((uint32_t)(cnt_now - dwt_cnt_)) / ((float)(CPU_FREQ_Hz));
+    float dt = (float)(uint32_t)(cnt_now - dwt_cnt_) / (float)CPU_FREQ_Hz;
     dwt_cnt_ = cnt_now;
 
     DwtCntUpdate();
