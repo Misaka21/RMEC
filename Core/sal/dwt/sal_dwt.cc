@@ -84,7 +84,8 @@ float DwtInstance::DwtGetTimeline_ms(void)
 uint64_t DwtInstance::DwtGetTimeline_us(void)
 {
     DwtSysTimeUpdate();
-    return dwt_time_.s * 1000000 + dwt_time_.ms * 1000 + dwt_time_.us;
+    // s 必须先提升到 64 位再乘: uint32 乘法在 s >= 4295 (约 71.6 分钟) 时回绕
+    return (uint64_t)dwt_time_.s * 1000000 + (uint64_t)dwt_time_.ms * 1000 + dwt_time_.us;
 }
 
 void DwtInstance::DwtDelay(float Delay)

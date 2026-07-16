@@ -17,6 +17,16 @@ void ResetDwt() {
     DwtInstance::DwtInit(168);
 }
 
+// 断言口径: 复刻 DwtSysTimeUpdate 的整数分解 (对 168 MHz 逐级取整)
+uint64_t ExpectedUs(uint64_t total_cycles) {
+    constexpr uint64_t HZ = 168000000, HZ_MS = 168000, HZ_US = 168;
+    uint64_t s   = total_cycles / HZ;
+    uint64_t rem = total_cycles - s * HZ;
+    uint64_t ms  = rem / HZ_MS;
+    uint64_t us  = (rem - ms * HZ_MS) / HZ_US;
+    return s * 1000000 + ms * 1000 + us;
+}
+
 TEST(DwtMath, TimelineBasic) {
     ResetDwt();
     fake_dwt.CYCCNT = 168000000u;  // 1 s
@@ -35,10 +45,21 @@ TEST(DwtMath, OverflowSpanIsTwoToThe32) {
     EXPECT_EQ(DwtInstance::DwtGetTimeline_us(), 25565282u);
 }
 
-// 已知缺陷 (不在本分支修复, 记录于 Phase B 交付报告):
-// DwtGetTimeline_us 内部 dwt_time_.s * 1000000 为 uint32 乘法,
-// 连续运行约 71.6 分钟 (s >= 4295) 后返回值回绕。本文件的用例
-// 刻意停留在安全区间, 修复该缺陷时请补充跨 4295 s 的用例。
+TEST(DwtMath, TimelineUsSurvivesLongUptime) {
+    // 回归目标: dwt_time_.s * 1000000 若按 uint32 计算, 连续运行约 71.6 分钟
+    // (s >= 4295) 后返回值回绕。制造 200 次溢出 ≈ 5113 s, 越过回绕点。
+    ResetDwt();
+    const uint64_t wraps = 200;
+    for (uint64_t i = 0; i < wraps; ++i) {
+        fake_dwt.CYCCNT = 0x80000000u;
+        DwtInstance::DwtGetTimeline_us();
+        fake_dwt.CYCCNT = 0x00000000u;
+        DwtInstance::DwtGetTimeline_us();
+    }
+    fake_dwt.CYCCNT = 80u;
+    uint64_t total = (wraps << 32) + fake_dwt.CYCCNT;
+    EXPECT_EQ(DwtInstance::DwtGetTimeline_us(), ExpectedUs(total));
+}
 
 TEST(DwtMath, DeltaTSurvivesWrap) {
     ResetDwt();
