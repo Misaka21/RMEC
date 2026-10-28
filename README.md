@@ -1,6 +1,6 @@
 # RMEC
 
-常州大学 RoboMaster 2025-2026 赛季 C++ 嵌入式控制框架。
+RoboMaster 2025-2026 赛季 C++ 嵌入式控制框架。
 
 <p>
   <img src="https://img.shields.io/badge/lang-C++17-blue"/>
